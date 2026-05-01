@@ -18,3 +18,8 @@ export interface PortfolioListItem {
   linkedActionsCount: number;
   lastUpdatedAt: string | null;
 }
+
+export interface PortfolioListResponse {
+  total: number;
+  filtered: PortfolioListItem[];
+}
