@@ -65,7 +65,7 @@ export function SubmitPromptForm() {
           tags,
         }),
       });
-      if (response.ok) {
+      if (response.status === 201 || response.ok) {
         router.push("/prompts");
         router.refresh();
         return;

@@ -110,5 +110,5 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
     client,
   });
 
-  return NextResponse.json({ ok: true, commentCount: after.length });
+  return NextResponse.json({ count: after.length });
 }

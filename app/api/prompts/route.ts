@@ -85,10 +85,16 @@ export async function POST(request: Request): Promise<Response> {
       ? rawSummary.trim()
       : null;
 
-  const tool: PromptTool =
-    typeof rawTool === "string" && (PROMPT_TOOLS as readonly string[]).includes(rawTool)
-      ? (rawTool as PromptTool)
-      : "other";
+  if (
+    typeof rawTool !== "string" ||
+    !(PROMPT_TOOLS as readonly string[]).includes(rawTool)
+  ) {
+    return NextResponse.json(
+      { error: "tool must be one of: " + PROMPT_TOOLS.join(", ") },
+      { status: 400 },
+    );
+  }
+  const tool: PromptTool = rawTool as PromptTool;
 
   const tags: PromptTag[] = Array.isArray(rawTags)
     ? rawTags.filter(
@@ -149,5 +155,5 @@ export async function POST(request: Request): Promise<Response> {
     client,
   });
 
-  return NextResponse.json({ ok: true, promptId });
+  return NextResponse.json({ id: promptId }, { status: 201 });
 }

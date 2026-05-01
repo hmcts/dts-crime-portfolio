@@ -33,9 +33,9 @@ export function UpvoteButton({ promptId, initialCount }: UpvoteButtonProps) {
         setCount(initialCount);
         return;
       }
-      const data = (await response.json()) as { upvoteCount?: number };
-      if (typeof data.upvoteCount === "number") {
-        setCount(data.upvoteCount);
+      const data = (await response.json()) as { count?: number };
+      if (typeof data.count === "number") {
+        setCount(data.count);
       }
       router.refresh();
     } catch {

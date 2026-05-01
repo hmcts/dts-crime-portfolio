@@ -93,5 +93,5 @@ export async function POST(_request: Request, context: RouteContext): Promise<Re
     client,
   });
 
-  return NextResponse.json({ ok: true, upvoteCount: after.length });
+  return NextResponse.json({ count: after.length, hasUpvote: !alreadyUpvoted });
 }

@@ -155,10 +155,9 @@ describe("POST /api/prompts", () => {
       }),
     );
 
-    expect(response.status).toBe(200);
-    const json = (await response.json()) as { ok: boolean; promptId: string };
-    expect(json.ok).toBe(true);
-    expect(typeof json.promptId).toBe("string");
+    expect(response.status).toBe(201);
+    const json = (await response.json()) as { id: string };
+    expect(typeof json.id).toBe("string");
 
     expect(sanityClientMock.transaction.commit).toHaveBeenCalledOnce();
     // No inline person create needed when one exists.
@@ -207,7 +206,7 @@ describe("POST /api/prompts", () => {
       }),
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     const createdDocs = sanityClientMock.transaction.create.mock.calls.map(
       (call) => (call as [{ _type: string }])[0],
     );
@@ -244,9 +243,29 @@ describe("POST /api/prompts", () => {
       }),
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     const log = changeLogRows()[0]!;
     expect(log.userEmail).toBe("viewer@hmcts.net");
+  });
+
+  it("returns 400 when the tool is not in the enum", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+
+    const response = await createPromptRoute(
+      makeJsonRequest("http://localhost/api/prompts", {
+        title: "T",
+        body: "B",
+        tool: "bard",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(sanityClientMock.transaction.commit).not.toHaveBeenCalled();
   });
 });
 
@@ -304,7 +323,7 @@ describe("POST /api/prompts/[id]/upvote", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true, upvoteCount: 1 });
+    expect(await response.json()).toEqual({ count: 1, hasUpvote: true });
 
     expect(sanityClientMock.transaction.patch).toHaveBeenCalledOnce();
     const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
@@ -344,7 +363,7 @@ describe("POST /api/prompts/[id]/upvote", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true, upvoteCount: 1 });
+    expect(await response.json()).toEqual({ count: 1, hasUpvote: false });
 
     const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
       string,
@@ -371,7 +390,7 @@ describe("POST /api/prompts/[id]/upvote", () => {
       makeIdContext("p1"),
     );
     expect(first.status).toBe(200);
-    expect((await first.json()).upvoteCount).toBe(1);
+    expect((await first.json()).count).toBe(1);
 
     // Second call: now contains the user -> remove
     sanityClientMock.client.fetch.mockResolvedValueOnce({
@@ -385,7 +404,7 @@ describe("POST /api/prompts/[id]/upvote", () => {
       makeIdContext("p1"),
     );
     expect(second.status).toBe(200);
-    expect((await second.json()).upvoteCount).toBe(0);
+    expect((await second.json()).count).toBe(0);
 
     // Each call writes exactly one ChangeLog row.
     expect(sanityClientMock.transaction.commit).toHaveBeenCalledTimes(2);
@@ -482,7 +501,7 @@ describe("POST /api/prompts/[id]/comments", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true, commentCount: 2 });
+    expect(await response.json()).toEqual({ count: 2 });
 
     expect(sanityClientMock.transaction.patch).toHaveBeenCalledOnce();
     const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
