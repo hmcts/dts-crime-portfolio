@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AnalyticsBanner } from "@/components/AnalyticsBanner";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import "./globals.css";
 
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <PreviewBanner />
+        <AnalyticsBanner />
         {children}
       </body>
     </html>

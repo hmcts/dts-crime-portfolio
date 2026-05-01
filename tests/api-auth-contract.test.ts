@@ -39,7 +39,12 @@ const API_ROOT = join(REPO_ROOT, "app", "api");
  * health check), add it here with a comment explaining why, and propose a
  * spec change first.
  */
-const STATIC_SCAN_ALLOWLIST: ReadonlySet<string> = new Set<string>();
+const STATIC_SCAN_ALLOWLIST: ReadonlySet<string> = new Set<string>([
+  // The analytics ingest proxy is consent-gated (analyticsConsent cookie),
+  // not auth-gated. Per openspec/specs/analytics/spec.md: the proxy 204s
+  // when the cookie is missing and never reaches `resolveUser()`.
+  "app/api/analytics/ingest/route.ts",
+]);
 
 function findRouteFiles(dir: string): string[] {
   const out: string[] = [];
