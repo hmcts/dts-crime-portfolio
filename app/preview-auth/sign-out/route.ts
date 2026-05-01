@@ -1,12 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import { COOKIE_NAME } from "@/lib/preview-auth/cookie";
 import { isPreviewEnvironment } from "@/lib/preview-auth/environment";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   if (!isPreviewEnvironment()) {
     return new NextResponse(null, { status: 404 });
   }
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
   return NextResponse.redirect(new URL("/preview-auth", request.url));
 }
 
-export function GET() {
+function handleGet() {
   return new NextResponse(null, { status: 405, headers: { Allow: "POST" } });
 }
+
+export const POST = withRequestLogging(handlePost);
+export const GET = withRequestLogging(handleGet);

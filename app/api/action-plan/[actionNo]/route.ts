@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import type { PortableTextBlock } from "@portabletext/types";
 
 import { resolveUser } from "@/lib/auth/resolver";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import { getSanityClient } from "@/lib/sanity/client";
 import {
   commitWithChangeLog,
@@ -47,7 +48,7 @@ const ACTION_FOR_PATCH_QUERY = /* groq */ `
  * Spec: openspec/specs/action-plan-tracking/spec.md (Admin progress editing),
  * openspec/specs/access-control/spec.md, openspec/specs/change-tracking/spec.md.
  */
-export async function PATCH(request: Request, context: RouteContext): Promise<Response> {
+async function handlePatch(request: Request, context: RouteContext): Promise<Response> {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -171,3 +172,5 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
 
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withRequestLogging(handlePatch);
