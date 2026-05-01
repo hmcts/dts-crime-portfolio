@@ -6,18 +6,18 @@ import { usePathname } from "next/navigation";
 interface NavItem {
   href: string;
   label: string;
-  comingSoon?: boolean;
+  badge?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/portfolio", label: "Portfolio" },
-  { href: "/galaxy", label: "Galaxy", comingSoon: true },
+  { href: "/galaxy", label: "Galaxy", badge: "v0" },
   { href: "/action-plan", label: "Action plan" },
-  { href: "/learning", label: "Learning", comingSoon: true },
-  { href: "/events", label: "Events", comingSoon: true },
-  { href: "/prompts", label: "Prompts", comingSoon: true },
-  { href: "/profile", label: "Profile", comingSoon: true },
-  { href: "/help", label: "Help", comingSoon: true },
+  { href: "/learning", label: "Learning" },
+  { href: "/events", label: "Events" },
+  { href: "/prompts", label: "Prompts" },
+  { href: "/profile", label: "Profile" },
+  { href: "/help", label: "Help" },
 ];
 
 export function Sidebar() {
@@ -51,13 +51,13 @@ export function Sidebar() {
                     }`}
                   >
                     <span>{item.label}</span>
-                    {item.comingSoon && (
+                    {item.badge && (
                       <span
                         className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
                           active ? "bg-white/15 text-white" : "bg-neutral-100 text-neutral-500"
                         }`}
                       >
-                        Soon
+                        {item.badge}
                       </span>
                     )}
                   </Link>
