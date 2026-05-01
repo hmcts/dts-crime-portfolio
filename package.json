@@ -18,9 +18,13 @@
   "dependencies": {
     "@portabletext/react": "^3.2.1",
     "@portabletext/types": "^2.0.13",
+    "@sanity/vision": "^3.74.0",
     "next": "^15.1.0",
+    "next-sanity": "^9.8.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sanity": "^3.74.0",
+    "styled-components": "^6.1.13"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

@@ -20,3 +20,5 @@ GOV.UK Notify · PostHog. Initial preview deploy on Render.com.
 - Read the specs: `openspec list --specs` then `openspec spec show <capability>`
 - Conventions for code and changes: [`CLAUDE.md`](CLAUDE.md)
 - Node version: see [`.nvmrc`](.nvmrc) · package manager: pnpm
+- Sanity Studio is embedded at `/studio` (Sanity project `vi5mhbtl`,
+  dataset `preview`). Sign in with your Sanity account to edit content.

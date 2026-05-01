@@ -58,6 +58,22 @@ first.
 - **Tooltip explainer copy is content-managed in Sanity** — don't hardcode
   jargon explainers in components.
 
+## Sanity
+
+- Project ID: `vi5mhbtl` (non-secret, hardcoded as default in
+  `sanity.config.ts` and overridable via `NEXT_PUBLIC_SANITY_PROJECT_ID`)
+- Datasets: `preview` (early Render deploy + local dev) and eventually
+  `production` (real go-live)
+- Studio is embedded at `/studio/[[...tool]]/page.tsx` using `next-sanity`
+- Schemas live under `sanity/schemas/` with documents in `documents/` and
+  embedded objects in `objects/`
+- `SANITY_API_TOKEN` is server-only and required for any write path. It
+  is never read or referenced from client code or any file the browser
+  bundles.
+- Rule: when adding a new document type, register it in
+  `sanity/schemas/index.ts` and update the test in
+  `tests/sanity-schemas.test.ts` to include the new name.
+
 ## preview-auth (non-production only)
 
 The preview-auth middleware is active when `APP_ENVIRONMENT` is `preview`
