@@ -1,0 +1,53 @@
+schema: spec-driven
+
+context: |
+  Project: Crime Portfolio Portal — a single discoverable front door for DTS Crime
+  in HMCTS. It surfaces delivery information that today is fragmented across
+  Ardoq, Jira, Confluence, and SharePoint without trying to replace those systems.
+
+  Audiences:
+    - Leadership — live filterable view of every project, comparisons, exports.
+    - Delivery teams — submit projects, maintain dossiers, log progress, link to
+      strategy actions.
+    - All staff — read learning content, share prompts, see events, find FAQs.
+
+  Top-level sections (left sidebar):
+    portfolio, action-plan, learning, events, prompts, profile, help.
+    Plus galaxy-view (constellation map) and project submission survey.
+
+  Tech stack:
+    - Next.js (App Router), React, Tailwind CSS, TypeScript
+    - Sanity CMS as system of record (no relational DB); GROQ for queries
+    - Auth fronted by an upstream identity proxy injecting `x-user-email` header
+    - GOV.UK Notify for transactional email
+    - exceljs / docx / pptxgenjs for client-side exports
+    - PostHog for analytics
+    - Custom canvas/WebGL for the Galaxy view; Tailwind-styled charts elsewhere
+    - Containerised Next.js behind the auth proxy; Terraform-managed infra
+
+  Roles:
+    - Viewer  — anyone admitted by the auth proxy
+    - Editor  — email allowlist mapped to project IDs
+    - Admin   — email allowlist; can edit anything, manage allowlists, snapshots
+
+  Conventions:
+    - Browser never writes to Sanity directly; all mutations go through Next.js
+      API routes that resolve identity from headers and apply role checks.
+    - Every mutation writes a ChangeLog row in the same Sanity transaction.
+    - Stage and governance tier are first-class enums shared by schema, forms,
+      cards, and exports.
+    - Reference-data endpoint powers every dropdown in one round trip.
+    - Snapshots capture resolved reference text, not just IDs.
+
+rules:
+  proposal:
+    - State the DTS Crime user need before the technical solution.
+    - Call out which existing system of record (Ardoq, Jira, Confluence, SharePoint)
+      the capability sits alongside.
+  specs:
+    - Scenarios MUST use WHEN/THEN; include AND clauses for compound conditions.
+    - Every requirement MUST have at least one scenario.
+    - Reference role names from the Roles list (Viewer/Editor/Admin) verbatim.
+  tasks:
+    - Group by build phase from the architecture plan.
+    - Keep individual tasks scoped to a single PR-sized unit of work.
