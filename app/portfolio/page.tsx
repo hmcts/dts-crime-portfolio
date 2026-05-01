@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PortfolioEmptyState } from "@/components/portfolio/PortfolioEmptyState";
 import { ProjectCard } from "@/components/portfolio/ProjectCard";
+import { ReferenceDataFilters } from "@/components/portfolio/ReferenceDataFilters";
 import { SearchInput } from "@/components/portfolio/SearchInput";
 import { StageFilterRow } from "@/components/portfolio/StageFilterRow";
 import { TierFilterRow } from "@/components/portfolio/TierFilterRow";
@@ -11,6 +12,7 @@ import {
   type PortfolioFilterSearchParams,
 } from "@/lib/portfolio/filters";
 import { listProjects } from "@/lib/portfolio/listProjects";
+import { fetchReferenceData } from "@/lib/portfolio/referenceData";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,10 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
   const filters = parsePortfolioFilters(resolvedParams);
   const filtersActive = !isPortfolioFiltersEmpty(filters);
 
-  const { total, filtered } = await listProjects(filters);
+  const [{ total, filtered }, referenceData] = await Promise.all([
+    listProjects(filters),
+    fetchReferenceData(),
+  ]);
   const filteredCount = filtered.length;
 
   let summary: string;
@@ -53,6 +58,7 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
       </header>
       <section className="mt-4 flex flex-col gap-3" aria-label="Filters">
         <SearchInput initial={filters.search} />
+        <ReferenceDataFilters data={referenceData} filters={filters} />
         <StageFilterRow activeStages={filters.stages} />
         <TierFilterRow activeTiers={filters.tiers} />
       </section>
