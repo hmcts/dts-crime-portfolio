@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { schemaTypes } from "@/sanity/schemas";
+import { TIERING_QUESTIONS } from "@/lib/tiering/calculator";
 
 describe("Sanity schema registry", () => {
-  it("exposes the seven core document types", () => {
+  it("registers every expected document and embedded object", () => {
     const names = schemaTypes.map((schema) => schema.name).sort();
     expect(names).toEqual([
       "action",
@@ -12,12 +13,25 @@ describe("Sanity schema registry", () => {
       "directorate",
       "group",
       "person",
+      "project",
+      "projectUpdate",
+      "surveyDetails",
+      "tieringAssessment",
     ]);
   });
 
-  it("registers every type as a document", () => {
+  it("classifies every type as document or object", () => {
     for (const schema of schemaTypes) {
-      expect(schema.type).toBe("document");
+      expect(["document", "object"]).toContain(schema.type);
     }
+  });
+});
+
+describe("Tiering assessment schema", () => {
+  it("has one field per tiering calculator question, in the same order", () => {
+    const tiering = schemaTypes.find((schema) => schema.name === "tieringAssessment");
+    expect(tiering).toBeDefined();
+    const fields = (tiering as { fields?: { name: string }[] }).fields ?? [];
+    expect(fields.map((f) => f.name)).toEqual([...TIERING_QUESTIONS]);
   });
 });

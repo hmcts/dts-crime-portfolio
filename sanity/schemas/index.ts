@@ -7,15 +7,25 @@ import { businessArea } from "./documents/businessArea";
 import { capability } from "./documents/capability";
 import { action } from "./documents/action";
 import { changeLog } from "./documents/changeLog";
+import { project } from "./documents/project";
+
+import { tieringAssessment } from "./objects/tieringAssessment";
+import { surveyDetails } from "./objects/surveyDetails";
+import { projectUpdate } from "./objects/projectUpdate";
 
 export const schemaTypes: SchemaTypeDefinition[] = [
-  // Reference data
+  // Documents
   person,
   group,
   directorate,
   businessArea,
   capability,
   action,
-  // Cross-cutting
   changeLog,
+  project,
+
+  // Embedded objects
+  tieringAssessment,
+  surveyDetails,
+  projectUpdate,
 ];
