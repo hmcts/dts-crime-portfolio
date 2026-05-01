@@ -27,16 +27,23 @@ exactly; if you find yourself wanting to break one, propose a spec change
 first.
 
 - **Auth resolver.** Every API route's first executable line is a call to
-  the shared auth resolver. The resolver reads the `x-user-email` header
-  and returns `{ email, isAdmin, editableProjects }`, or short-circuits
-  with the appropriate HTTP error. No route reads the header directly.
-  See `openspec/specs/access-control/spec.md`.
+  `resolveUser()` from `lib/auth/resolver.ts`. The resolver reads the
+  `x-user-email` header and returns either `{ kind: "unauthorized",
+  reason }` or `{ kind: "authorized", email, isAdmin, editableProjects }`.
+  No route reads the header directly. Admin allowlist is sourced from
+  `ADMIN_ALLOWLIST` env (comma/whitespace-separated). Editor allowlist
+  lookup is currently a stub returning `[]` — Admins can edit anything,
+  and a real per-project Editor lookup against Sanity will replace the
+  stub once we have an editorAccess schema. See
+  `openspec/specs/access-control/spec.md`.
 - **Browser never writes to Sanity.** All mutations go through Next.js
   API routes using a server-only token client. The browser uses a
   read-only client.
 - **ChangeLog with every mutation.** Every successful mutation writes one
   ChangeLog row per modified field, in the *same* Sanity transaction.
-  Use the shared transaction helper. See
+  Use `commitWithChangeLog()` from `lib/sanity/transaction.ts` — pass the
+  mutations callback, the per-field changes, and the resolver's email.
+  Don't call `client.transaction()` directly from API routes. See
   `openspec/specs/change-tracking/spec.md`.
 - **Roles use exact names.** `Viewer`, `Editor`, `Admin` — no synonyms in
   code, copy, comments, or specs.
