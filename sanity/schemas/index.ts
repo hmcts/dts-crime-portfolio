@@ -8,24 +8,46 @@ import { capability } from "./documents/capability";
 import { action } from "./documents/action";
 import { changeLog } from "./documents/changeLog";
 import { project } from "./documents/project";
+import { prompt } from "./documents/prompt";
+import { learningItem } from "./documents/learningItem";
+import { event } from "./documents/event";
+import { faq } from "./documents/faq";
+import { reportingCut } from "./documents/reportingCut";
+import { previewSession } from "./documents/previewSession";
+import { reminderSend } from "./documents/reminderSend";
+import { tooltipExplainer } from "./documents/tooltipExplainer";
 
 import { tieringAssessment } from "./objects/tieringAssessment";
 import { surveyDetails } from "./objects/surveyDetails";
 import { projectUpdate } from "./objects/projectUpdate";
+import { promptUpvote } from "./objects/promptUpvote";
+import { promptComment } from "./objects/promptComment";
 
 export const schemaTypes: SchemaTypeDefinition[] = [
-  // Documents
+  // Documents — reference data
   person,
   group,
   directorate,
   businessArea,
   capability,
   action,
-  changeLog,
+  // Documents — core
   project,
-
+  // Documents — community / content
+  prompt,
+  learningItem,
+  event,
+  faq,
+  // Documents — operational / audit
+  changeLog,
+  reportingCut,
+  previewSession,
+  reminderSend,
+  tooltipExplainer,
   // Embedded objects
   tieringAssessment,
   surveyDetails,
   projectUpdate,
+  promptUpvote,
+  promptComment,
 ];
