@@ -1,6 +1,7 @@
 import { ActionDetailPane } from "@/components/actionPlan/ActionDetail";
 import { ActionList } from "@/components/actionPlan/ActionList";
 import { StrandSummaries } from "@/components/actionPlan/StrandSummary";
+import { resolveUser } from "@/lib/auth/resolver";
 import {
   fetchActionByNumber,
   fetchActions,
@@ -18,6 +19,9 @@ interface ActionPlanPageProps {
 export default async function ActionPlanPage({ searchParams }: ActionPlanPageProps) {
   const { action: actionParam } = await searchParams;
   const requestedActionNo = Array.isArray(actionParam) ? actionParam[0] : actionParam;
+
+  const user = await resolveUser();
+  const isAdmin = user.kind === "authorized" && user.isAdmin;
 
   const actions = await fetchActions();
   if (actions.length === 0) {
@@ -57,7 +61,11 @@ export default async function ActionPlanPage({ searchParams }: ActionPlanPagePro
         </aside>
         <div className="min-w-0">
           {selected ? (
-            <ActionDetailPane action={selected} linkedProjects={linkedProjects} />
+            <ActionDetailPane
+              action={selected}
+              linkedProjects={linkedProjects}
+              isAdmin={isAdmin}
+            />
           ) : (
             <p className="text-sm text-neutral-500">Action not found.</p>
           )}
