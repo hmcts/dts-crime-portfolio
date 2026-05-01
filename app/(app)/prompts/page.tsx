@@ -42,14 +42,22 @@ export default async function PromptsPage({ searchParams }: PromptsPageProps) {
             Community prompt library — copy what works, vote up the gems.
           </p>
         </div>
-        {filtersActive && (
+        <div className="flex items-center gap-2 self-start">
+          {filtersActive && (
+            <Link
+              href="/prompts"
+              className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+            >
+              Clear filters
+            </Link>
+          )}
           <Link
-            href="/prompts"
-            className="self-start rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+            href="/prompts/new"
+            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
           >
-            Clear filters
+            Share your own prompt
           </Link>
-        )}
+        </div>
       </header>
 
       <div className="mt-4">
