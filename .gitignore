@@ -1,2 +1,44 @@
+# OS
 .DS_Store
 **/*.DS_Store
+
+# Node
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+build/
+.vercel/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# Sanity Studio (when added)
+studio/dist/
+studio/.sanity/
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Env files — never commit secrets
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+# Keep example env files committed
+!.env.example
+!.env.*.example
+
+# Editor / IDE
+.idea/
+.vscode/
+!.vscode/settings.json.example
+*.swp
+*.swo
