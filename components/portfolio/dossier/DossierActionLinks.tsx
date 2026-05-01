@@ -21,7 +21,17 @@ function ActionChip({ link }: { link: DossierActionLink }) {
   );
 }
 
-export function DossierActionLinks({ dossier }: { dossier: ProjectDossier }) {
+interface DossierActionLinksProps {
+  dossier: ProjectDossier;
+  /**
+   * Reserved for the action picker editor. Action reference editing is
+   * deferred behind the same canEdit gate — the prop is accepted now so
+   * downstream wiring is consistent across every dossier section.
+   */
+  canEdit?: boolean;
+}
+
+export function DossierActionLinks({ dossier }: DossierActionLinksProps) {
   const links = dossier.actionPlanLinks ?? [];
   return (
     <section>

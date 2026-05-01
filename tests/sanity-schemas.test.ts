@@ -12,6 +12,7 @@ describe("Sanity schema registry", () => {
       "capability",
       "changeLog",
       "directorate",
+      "editorAccess",
       "event",
       "faq",
       "group",

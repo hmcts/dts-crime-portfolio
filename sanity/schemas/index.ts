@@ -7,6 +7,7 @@ import { businessArea } from "./documents/businessArea";
 import { capability } from "./documents/capability";
 import { action } from "./documents/action";
 import { changeLog } from "./documents/changeLog";
+import { editorAccess } from "./documents/editorAccess";
 import { project } from "./documents/project";
 import { prompt } from "./documents/prompt";
 import { learningItem } from "./documents/learningItem";
@@ -40,6 +41,7 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   faq,
   // Documents — operational / audit
   changeLog,
+  editorAccess,
   reportingCut,
   previewSession,
   reminderSend,
