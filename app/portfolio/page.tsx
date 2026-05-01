@@ -2,6 +2,9 @@ import Link from "next/link";
 
 import { PortfolioEmptyState } from "@/components/portfolio/PortfolioEmptyState";
 import { ProjectCard } from "@/components/portfolio/ProjectCard";
+import { SearchInput } from "@/components/portfolio/SearchInput";
+import { StageFilterRow } from "@/components/portfolio/StageFilterRow";
+import { TierFilterRow } from "@/components/portfolio/TierFilterRow";
 import {
   isPortfolioFiltersEmpty,
   parsePortfolioFilters,
@@ -34,7 +37,7 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
 
   return (
     <main className="mx-auto max-w-6xl p-6">
-      <header className="flex items-start justify-between gap-4 border-b border-neutral-200 pb-4">
+      <header className="flex flex-col gap-4 border-b border-neutral-200 pb-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Portfolio</h1>
           <p className="mt-1 text-sm text-neutral-600">{summary}</p>
@@ -42,12 +45,17 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
         {filtersActive && (
           <Link
             href="/portfolio"
-            className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+            className="self-start rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
           >
             Clear filters
           </Link>
         )}
       </header>
+      <section className="mt-4 flex flex-col gap-3" aria-label="Filters">
+        <SearchInput initial={filters.search} />
+        <StageFilterRow activeStages={filters.stages} />
+        <TierFilterRow activeTiers={filters.tiers} />
+      </section>
       {total === 0 ? (
         <div className="mt-6">
           <PortfolioEmptyState />
@@ -80,4 +88,3 @@ function NoMatchesEmptyState() {
     </div>
   );
 }
-
