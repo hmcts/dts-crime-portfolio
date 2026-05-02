@@ -41,6 +41,9 @@ test-results/
 !.env.example
 !.env.*.example
 
+# direnv (per-developer; never commit)
+.envrc
+
 # Editor / IDE
 .idea/
 .vscode/

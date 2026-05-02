@@ -47,7 +47,21 @@ Then edit `.env.local`. The blocks in that file map onto:
 - `ADMIN_ALLOWLIST` — only needed if you want the Admin role locally. Add your email.
 - The PostHog / analytics block (`POSTHOG_PROJECT_KEY`, `POSTHOG_INGEST_URL`, `ANALYTICS_INGEST_MODE`, `ANALYTICS_USER_ID_PEPPER`, `ANALYTICS_DROP_IP`) — all optional. Without them the consent banner still renders and tests still pass; events just never reach a real PostHog instance.
 
-## Run the app
+## (Optional) direnv
+
+`pnpm dev` and the Next.js runtime read `.env.local` automatically — direnv is not required. It is useful for the *shell-level* tools that don't go through Next: the Sanity CLI, `pnpm exec playwright …` invocations that read `PORT`, the `scripts/dora.sh` script, and any one-shot Node script you write.
+
+Install [direnv](https://direnv.net) (`brew install direnv` on macOS) and add the shell hook to `~/.zshrc` or `~/.bashrc` per the project README. Then in the repo root:
+
+```bash
+cat > .envrc <<'EOF'
+use node           # honours .nvmrc
+dotenv_if_exists .env.local
+EOF
+direnv allow
+```
+
+`.envrc` is gitignored — keep it per-developer. Future `cd` into the repo auto-loads the env; `cd` out unloads it.
 
 ```bash
 pnpm dev
