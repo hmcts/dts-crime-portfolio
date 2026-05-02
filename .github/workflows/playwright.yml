@@ -1,9 +1,16 @@
 name: playwright
 
+# Triggers fire on push-to-main as well as on pull_request, but the e2e
+# job below skips when `github.event_name == 'push'`. Branch protection
+# already requires this workflow to be green BEFORE the merge — re-running
+# it after the merge is redundant and burns CI minutes for no signal.
+# Manual re-run is supported via `workflow_dispatch`.
+
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,16 +19,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# This workflow now runs unconditionally — there are real e2e tests in
-# `playwright/tests/`. Earlier history (PR #58) deleted the workflow
-# because no tests existed and the prior `if: hashFiles(...)` skip
-# pattern caused GitHub Actions to report `failure` for every empty run.
-# See retrospectives/2026-05-02-wave-1-and-ignored-playwright-failures.md
+# This workflow now runs unconditionally on PRs — there are real e2e
+# tests in `playwright/tests/`. Earlier history (PR #58) deleted the
+# workflow because no tests existed and the prior `if: hashFiles(...)`
+# skip pattern caused GitHub Actions to report `failure` for every
+# empty run. See retrospectives/2026-05-02-wave-1-and-ignored-playwright-failures.md
 # action item 2.
 
 jobs:
   e2e:
     name: e2e
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

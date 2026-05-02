@@ -1,9 +1,19 @@
 name: ci
 
+# Triggers fire on push-to-main as well as on pull_request, but every
+# job below skips when `github.event_name == 'push'`. Branch protection
+# already requires this workflow to be green BEFORE the merge — re-running
+# it after the merge is redundant work and burns CI minutes for no signal.
+# The post-merge run still appears in the Actions tab as `skipped`, which
+# is what we want for audit.
+#
+# Manual re-run is supported via `workflow_dispatch`.
+
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,6 +25,7 @@ concurrency:
 jobs:
   openspec:
     name: openspec validate
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -26,6 +37,7 @@ jobs:
 
   typecheck:
     name: typecheck
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -41,6 +53,7 @@ jobs:
 
   lint:
     name: lint
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -56,6 +69,7 @@ jobs:
 
   test:
     name: test
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -71,6 +85,7 @@ jobs:
 
   build:
     name: build
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

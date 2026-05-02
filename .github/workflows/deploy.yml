@@ -1,13 +1,17 @@
 name: deploy
 
-# Triggered after the `ci` workflow completes successfully on main.
-# Branch protection on main requires CI to pass before merge, so this
-# in effect runs after every merge that produced a green build.
+# Triggered directly by every push to main. Branch protection requires
+# the `ci` and `playwright` workflows to be green on the PR before merge,
+# so a push to main is by definition the merge of an already-tested PR.
+# Previously this workflow chained off `workflow_run: ci` so it would
+# run after the redundant post-merge CI re-run; we now skip those
+# re-runs (`github.event_name != 'push'` guard in ci.yml + playwright.yml),
+# so deploy fires on the push directly. Manual re-deploy is supported via
+# `workflow_dispatch`.
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
+  push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,7 +19,6 @@ permissions:
 jobs:
   deploy-preview:
     name: deploy preview to render
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: preview
