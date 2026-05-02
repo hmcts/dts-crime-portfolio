@@ -24,6 +24,16 @@ Two principles to internalise:
 When dispatching agents, name the personas active on the change and record
 them in the PR description.
 
+### Watch CI on `main` after every merge
+
+Per [`retrospectives/2026-05-02-wave-1-and-ignored-playwright-failures.md`](retrospectives/2026-05-02-wave-1-and-ignored-playwright-failures.md)
+(action item 3), the Delivery Manager runs `gh run list --branch main --limit 5`
+after every merge and surfaces any failure to the team in the same chat
+thread. PR-time green is not enough — main can break post-merge through
+interaction with whatever else landed. Three consecutive ignored failures
+on a workflow on `main` triggers a retrospective per
+[`openspec/specs/team-retrospective/spec.md`](openspec/specs/team-retrospective/spec.md).
+
 ### Skills per persona
 
 When acting as a persona, reach for these Claude skills / tools first. The
