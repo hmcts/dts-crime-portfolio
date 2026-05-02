@@ -126,6 +126,85 @@ days. Re-entry of the email SHALL be required after expiry.
 - **THEN** the browser SHALL no longer send the cookie
 - **AND** the next request SHALL be redirected to `/preview-auth`
 
+### Requirement: Domain restriction on the sign-in surface
+The preview-auth sign-in surface SHALL accept only email addresses whose
+domain part exactly matches one of `hmcts.net` or `justice.gov.uk`. The
+match SHALL be case-insensitive on the domain part and applied after
+trimming leading and trailing whitespace on the submitted value. Any
+other domain SHALL be rejected. Both client-side validation (immediate
+UX feedback) and server-side validation (security-of-record) SHALL apply
+the same rule, sourced from a single shared helper, so client-bypass
+attempts cannot succeed.
+
+The list of allowed domains is the static constant
+`ALLOWED_PREVIEW_AUTH_DOMAINS` exported from
+`lib/preview-auth/email-domain.ts`. There is no runtime feature flag and
+no per-environment override; varying the list in future requires a spec
+change.
+
+This requirement is layered on top of the existing
+"Submitting a syntactically valid email" scenario in the "Email-entry
+page" requirement above — format validation runs first, then domain
+validation.
+
+#### Scenario: Accepted hmcts.net email
+- **WHEN** the visitor submits `tester@hmcts.net`
+- **THEN** the handler SHALL set the signed `previewAuth` cookie
+- **AND** SHALL redirect to the original URL (defaulting to `/portfolio`)
+
+#### Scenario: Accepted justice.gov.uk email
+- **WHEN** the visitor submits `tester@justice.gov.uk`
+- **THEN** the handler SHALL set the signed `previewAuth` cookie
+- **AND** SHALL redirect to the original URL (defaulting to `/portfolio`)
+
+#### Scenario: Mixed-case domain accepted
+- **WHEN** the visitor submits `Tester@HMCTS.NET` (or
+  `tester@Justice.Gov.UK`)
+- **THEN** the handler SHALL accept the submission
+- **AND** the cookie payload SHALL store the email lower-cased so the
+  resolver sees a canonical value
+
+#### Scenario: Leading and trailing whitespace tolerated
+- **WHEN** the visitor submits `  tester@hmcts.net  ` with surrounding
+  whitespace
+- **THEN** the handler SHALL trim the input before validation
+- **AND** the trimmed, lower-cased email SHALL be stored in the cookie
+  payload
+
+#### Scenario: Disallowed domain rejected
+- **WHEN** the visitor submits an email whose domain part is not in the
+  allowed list (e.g. `tester@example.com`, `tester@hmcts.com`,
+  `tester@hmcts.net.example.com`, `tester@justice.gov.uk.evil.com`)
+- **THEN** the handler SHALL NOT set the `previewAuth` cookie
+- **AND** the page SHALL re-render with an inline error region that
+  names the rejected address and lists the allowed domains
+- **AND** the rejection SHALL be logged with the rejected domain part
+  only — the local-part of the email SHALL NOT appear in any log line
+
+#### Scenario: Empty or malformed input rejected
+- **WHEN** the visitor submits an empty value, a value with no `@`, or a
+  value with multiple `@` characters
+- **THEN** the handler SHALL NOT set the cookie
+- **AND** SHALL re-render with the existing invalid-format error
+  (format validation runs before domain validation)
+
+#### Scenario: Client-side bypass still rejected by the server
+- **WHEN** a client crafts a POST that bypasses client-side validation
+  and submits a disallowed-domain email directly to the server action
+- **THEN** the server SHALL reject the request the same way as a
+  normal submission
+- **AND** SHALL NOT set the `previewAuth` cookie
+
+#### Scenario: Unicode and confusable characters
+- **WHEN** the visitor submits an address whose domain uses unicode or
+  IDN-encoded characters that visually resemble the allowed domains
+  (e.g. an `h` from a different alphabet)
+- **THEN** the handler SHALL reject it via the strict ASCII string
+  comparison against `ALLOWED_PREVIEW_AUTH_DOMAINS`
+- **AND** the team accepts that this is the deliberate position for
+  v1 — the strictness errs on the side of rejection, and any future
+  relaxation requires a separate spec change
+
 ### Requirement: Audit of preview identity
 The preview environment SHALL log each new identity (first cookie issue
 per email) to a `previewSession` document in the preview Sanity dataset,
