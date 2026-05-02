@@ -26,6 +26,11 @@ studio/.sanity/
 coverage/
 .nyc_output/
 
+# Playwright
+playwright-report/
+test-results/
+.playwright-cache/
+
 # Env files — never commit secrets
 .env
 .env.local

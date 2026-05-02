@@ -1,0 +1,18 @@
+name: dts-crime-portfolio CodeQL config
+
+# Exclude paths that ship test-only or fixture code from CodeQL
+# scanning. These files never reach the production bundle, never
+# run in production, and frequently rely on patterns that are unsafe
+# in production but acceptable in a controlled test harness (e.g.
+# disabling certificate validation when redirecting test traffic to
+# a localhost mock server).
+#
+# Production code (`app/`, `lib/`, `components/`, `sanity/`, etc.)
+# remains in scope and is fully analysed.
+
+paths-ignore:
+  - playwright/**
+  - tests/**
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"

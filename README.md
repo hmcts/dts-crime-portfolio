@@ -31,6 +31,9 @@ Next.js (App Router) · React · Tailwind · TypeScript · Sanity CMS · GOV.UK 
 - Decision history: [`decisions/`](decisions) (one markdown file per decision)
 - Conventions for code and changes: [`CLAUDE.md`](CLAUDE.md)
 - Node version: see [`.nvmrc`](.nvmrc) · package manager: pnpm
+- Tests: `pnpm test` runs the Vitest unit suite. `pnpm test:e2e` runs the
+  Playwright end-to-end suite (preview-auth, portfolio empty/list, help
+  search). Browsers install via `pnpm exec playwright install chromium`.
 - Sanity Studio is embedded at `/studio` (Sanity project `vi5mhbtl`, dataset `preview`). Sign in with your Sanity account to edit content.
 
 ## Meet the team
