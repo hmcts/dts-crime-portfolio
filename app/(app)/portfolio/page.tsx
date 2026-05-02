@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ExportButtons } from "@/components/exports/ExportButtons";
 import { PortfolioEmptyState } from "@/components/portfolio/PortfolioEmptyState";
 import { ProjectCard } from "@/components/portfolio/ProjectCard";
 import { ReferenceDataFilters } from "@/components/portfolio/ReferenceDataFilters";
@@ -47,14 +48,17 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
           <h1 className="text-2xl font-semibold tracking-tight">Portfolio</h1>
           <p className="mt-1 text-sm text-neutral-600">{summary}</p>
         </div>
-        {filtersActive && (
-          <Link
-            href="/portfolio"
-            className="self-start rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
-          >
-            Clear filters
-          </Link>
-        )}
+        <div className="flex items-center gap-2 self-start">
+          {filtersActive && (
+            <Link
+              href="/portfolio"
+              className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400"
+            >
+              Clear filters
+            </Link>
+          )}
+          <ExportButtons projects={filtered} />
+        </div>
       </header>
       <section className="mt-4 flex flex-col gap-3" aria-label="Filters">
         <SearchInput initial={filters.search} />
