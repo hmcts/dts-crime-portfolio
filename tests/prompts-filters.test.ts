@@ -21,6 +21,7 @@ function prompt(overrides: Partial<PromptListItem> & { _id: string }): PromptLis
     authorName: "Author",
     authorSeed: null,
     upvoteCount: 0,
+    hasUserUpvoted: false,
     commentCount: 0,
     comments: [],
     competitionMonth: null,

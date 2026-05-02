@@ -106,6 +106,13 @@ export interface PromptComment {
   body: string;
   createdAt: string | null;
   upvoteCount: number;
+  /**
+   * Whether the calling user has upvoted this comment. Derived in the
+   * GROQ projection from the comment's `upvotes[].userEmail` array. The
+   * client uses this to render the "voted" state on the comment-level
+   * upvote button on first paint (so it survives reloads).
+   */
+  hasUserUpvoted: boolean;
   parentKey: string | null;
 }
 
@@ -126,6 +133,13 @@ export interface PromptListItem {
   authorName: string | null;
   authorSeed: string | null;
   upvoteCount: number;
+  /**
+   * Whether the calling user has upvoted this prompt. Derived in the
+   * GROQ projection from the prompt's `upvotes[].userEmail` array — the
+   * page-level `resolveUser()` threads its email into the parameter.
+   * For unauthorized callers the flag is always false.
+   */
+  hasUserUpvoted: boolean;
   commentCount: number;
   comments: PromptComment[];
   competitionMonth: string | null;

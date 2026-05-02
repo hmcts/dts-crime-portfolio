@@ -93,7 +93,13 @@ export function PromptCommentsModal({ prompt, onClose }: PromptCommentsModalProp
       ref={dialogRef}
       onClick={onBackdropClick}
       aria-label={`Comments — ${prompt.title}`}
-      className="m-0 w-full max-w-5xl rounded-2xl p-0 backdrop:bg-neutral-900/40"
+      // `m-auto` plus explicit `inset-0` (top/right/bottom/left = 0) restore
+      // the browser's default centering for `<dialog>`. The earlier `m-0`
+      // suppressed the auto-margins that centre a fixed-position element,
+      // so the dialog was rendered at the top-left of the viewport. The
+      // `max-h-[85vh]` cap keeps the box short enough that the auto-margin
+      // can resolve a vertical offset on tall viewports too.
+      className="inset-0 m-auto w-full max-w-5xl max-h-[85vh] rounded-2xl p-0 backdrop:bg-neutral-900/40"
     >
       <div className="grid max-h-[85vh] grid-cols-1 gap-0 md:grid-cols-[3fr_2fr]">
         {/* Left column — full prompt */}
@@ -155,8 +161,9 @@ export function PromptCommentsModal({ prompt, onClose }: PromptCommentsModalProp
             <div className="absolute right-3 top-3">
               <CopyButton
                 value={prompt.body}
-                label="Copy"
-                className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+                label="Copy prompt"
+                variant="icon"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
               />
             </div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
@@ -332,6 +339,7 @@ function CommentRow({
             promptId={promptId}
             commentKey={comment._key}
             initialCount={comment.upvoteCount}
+            initialVoted={comment.hasUserUpvoted}
           />
           {canReply && (
             <button

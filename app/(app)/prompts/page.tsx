@@ -5,6 +5,7 @@ import { PromptCard } from "@/components/prompts/PromptCard";
 import { SortTabs } from "@/components/prompts/SortTabs";
 import { TagFilterRow } from "@/components/prompts/TagFilterRow";
 import { ToolFilterRow } from "@/components/prompts/ToolFilterRow";
+import { resolveUser } from "@/lib/auth/resolver";
 import {
   applyPromptFilters,
   formatCompetitionMonth,
@@ -26,7 +27,13 @@ export default async function PromptsPage({ searchParams }: PromptsPageProps) {
   const filtersActive = !isPromptFiltersDefault(filters);
 
   const currentMonth = formatCompetitionMonth(new Date());
-  const allPrompts = await fetchPrompts(filters);
+  // Resolve the calling user so the GROQ projection can populate
+  // `hasUserUpvoted` per prompt and per comment. Unauthorized callers
+  // (e.g. the public preview surface) get `null`, which the projection
+  // treats as "not voted" everywhere.
+  const user = await resolveUser();
+  const userEmail = user.kind === "authorized" ? user.email : null;
+  const allPrompts = await fetchPrompts(filters, userEmail);
   const sorted = applyPromptFilters(allPrompts, filters, { currentMonth });
 
   // The banner reflects the current month's winner regardless of active
