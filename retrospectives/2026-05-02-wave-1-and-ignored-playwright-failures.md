@@ -35,7 +35,13 @@
 
 ## Action items
 
-1. **Fix the Playwright workflow so it stops reporting failures on `main`.** Replace the job-level `if: hashFiles(...)` guard with a guard job that always succeeds and outputs a flag; e2e job runs only when the flag is true. **Owner:** DevOps Engineer. **Artefact:** PR. **Horizon:** this batch (alongside this retro).
+1. **Stop the Playwright workflow reporting failures on `main` — by removing it, not by hiding it.**
+
+   First-cut framing of this action proposed replacing the job-level `if: hashFiles(...)` guard with a guard job that always succeeds and outputs a flag; the e2e job would run only when the flag was true. PR #58 implemented that, but reviewer challenge during the PR (the Product Manager's lens: *the workflow with no tests behind it tells reviewers "all good" when in fact we have no e2e verification at all*) reframed the action.
+
+   **Revised action:** delete `.github/workflows/playwright.yml` entirely until real Playwright tests exist. The team-retrospective spec's wording explicitly allows this — "the action items SHALL include either fixing the job or removing it". When tests arrive (action 2 below) the workflow comes back with them.
+
+   **Owner:** DevOps Engineer. **Artefact:** PR #58 (revised). **Horizon:** this batch.
 
 2. **Re-attempt Playwright e2e tests.** Dispatch a fresh QA agent or schedule the work as a routine. The first set is small (preview-auth flow, portfolio empty state, portfolio with mocked Sanity, dossier render, help-faq search). Reuse the half-built work in `dts-crime-portfolio-qa` worktree if salvageable. **Owner:** QA / Test Engineer. **Artefact:** PR. **Horizon:** next batch.
 
