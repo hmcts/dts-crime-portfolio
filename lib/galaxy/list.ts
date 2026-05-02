@@ -4,8 +4,8 @@ import { getSanityClient } from "@/lib/sanity/client";
 import type { GalaxyProject } from "./types";
 
 /**
- * Server-only fetcher for the v0 galaxy view. One GROQ query returns every
- * project with the minimum fields the SVG layout needs. Spec:
+ * Server-only fetcher for the galaxy view. One GROQ query returns every
+ * project with the fields each lens, overlay, and filter needs. Spec:
  * openspec/specs/galaxy-view/spec.md.
  */
 const GALAXY_LIST_QUERY = /* groq */ `
@@ -13,7 +13,13 @@ const GALAXY_LIST_QUERY = /* groq */ `
     _id,
     name,
     projectStage,
-    "capability": capability->name
+    "capability": capability->{ _id, name },
+    "businessAreas": businessAreas[]->{ _id, name },
+    "directorate": directorate->{ _id, name },
+    governanceBody,
+    riskRegister,
+    dpiaInPlace,
+    lastUpdatedAt
   }
 `;
 
