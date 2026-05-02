@@ -6,7 +6,7 @@ TBD - created by archiving change add-crime-portfolio-portal. Update Purpose aft
 ### Requirement: Portfolio card grid
 The system SHALL render the portfolio at `/portfolio` as a filterable grid of
 project cards, with a header summary stating `Showing X of Y projects`, an
-"Export to Excel ({n})" button, a "New Project" CTA, and a "Galaxy view" link.
+"Export to Excel ({n})" button, and a "New Project" CTA.
 
 #### Scenario: Default view
 - **WHEN** a Viewer navigates to `/portfolio` without filters
@@ -61,11 +61,11 @@ live count of items in each domain.
 ### Requirement: Stage pills are first-class
 Stage pills (`idea`, `scan`, `pilot`, `scale`, `stalled`, `sunset`) SHALL use
 a single colour and label mapping shared by the portfolio cards, the dossier
-header, the galaxy view, and every export.
+header, and every export.
 
 #### Scenario: Stage pill consistency
-- **WHEN** a project is rendered in any of: portfolio card, dossier, galaxy
-  star, Excel export, PowerPoint summary
+- **WHEN** a project is rendered in any of: portfolio card, dossier,
+  Excel export, PowerPoint summary
 - **THEN** the stage pill SHALL use the same colour, label, and casing
 - **AND** the source of truth SHALL be a shared TypeScript enum
 

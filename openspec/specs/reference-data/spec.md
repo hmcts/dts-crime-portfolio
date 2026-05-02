@@ -40,7 +40,7 @@ SHALL fail fast if any sub-fetch errors.
 ### Requirement: Cached client-side per session
 The client SHALL cache the reference-data response in memory for the lifetime
 of the page and SHALL reuse it across the submission form, the edit studio,
-the portfolio filters, and the galaxy view.
+and the portfolio filters.
 
 #### Scenario: Single fetch per session
 - **WHEN** a Viewer opens the portfolio, then opens the submission form,

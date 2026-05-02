@@ -17,7 +17,7 @@ graph TB
     subgraph Render["Render — single Web Service"]
         Middleware["Edge middleware<br/><br/>preview-auth cookie<br/>verification + header<br/>injection (non-prod)"]:::container
 
-        Pages["Next.js App Router<br/>server components<br/><br/>portfolio, dossier, action<br/>plan, profile, learning,<br/>events, prompts, help,<br/>galaxy, compare, submit"]:::container
+        Pages["Next.js App Router<br/>server components<br/><br/>portfolio, dossier, action<br/>plan, profile, learning,<br/>events, prompts, help,<br/>compare, submit"]:::container
 
         APIRoutes["Next.js API routes<br/><br/>portfolios/*, action-plan,<br/>prompts, analytics ingest,<br/>compliance briefing,<br/>reporting cuts, compare"]:::container
 

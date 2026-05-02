@@ -29,7 +29,7 @@ Existing coverage (six tests):
 | Access Control | HIGH | Role-gated UI affordances (pencil icons, edit modes). Silent permission bypass = production incident. |
 | Analytics consent | HIGH | GDPR-relevant. PostHog must NOT load before Accept. Cookie-driven banner-dismissal currently has unit tests but no e2e. |
 | Action Plan Tracking | MED | High-traffic read surface, deep-link via `?action=…`, strand counts and linked projects. |
-| Galaxy View | MED | Interactive canvas; lens switcher and overlays are read-mostly but visually high-stakes. |
+| Galaxy View | KILLED 2026-05-02 | Capability removed per `decisions/2026-05-02-kill-galaxy-view.md`. Row preserved because the matrix is a snapshot of the time it was written; do not write e2e against this surface — it no longer exists. |
 | Events Listing | MED | Filters + search + modal — all read-mostly. |
 | Learning Hub | MED | Filters + content viewer — read-mostly, future playlist sort. |
 | Profile View | MED | Role-grouped projects; Edit/Open affordance per role. |

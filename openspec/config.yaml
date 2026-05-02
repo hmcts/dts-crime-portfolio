@@ -13,7 +13,7 @@ context: |
 
   Top-level sections (left sidebar):
     portfolio, action-plan, learning, events, prompts, profile, help.
-    Plus galaxy-view (constellation map) and project submission survey.
+    Plus the project submission survey.
 
   Tech stack:
     - Next.js (App Router), React, Tailwind CSS, TypeScript
@@ -22,7 +22,7 @@ context: |
     - GOV.UK Notify for transactional email
     - exceljs / docx / pptxgenjs for client-side exports
     - PostHog for analytics
-    - Custom canvas/WebGL for the Galaxy view; Tailwind-styled charts elsewhere
+    - Tailwind-styled charts and lists; no custom canvas/WebGL
     - Containerised Next.js behind the auth proxy; Terraform-managed infra
 
   Roles:

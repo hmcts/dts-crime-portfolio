@@ -11,7 +11,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/portfolio", label: "Portfolio" },
-  { href: "/galaxy", label: "Galaxy", badge: "v0" },
   { href: "/action-plan", label: "Action plan" },
   { href: "/learning", label: "Learning" },
   { href: "/events", label: "Events" },
