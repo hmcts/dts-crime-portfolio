@@ -69,9 +69,12 @@ test("preview-auth: rejected non-HMCTS email shows inline error and does not nav
   await expect(page).toHaveURL(/\/preview-auth/);
   await expect(page.getByRole("heading", { name: "Sign in to the preview" })).toBeVisible();
 
-  // Inline error names the allowed domains.
-  const error = page.getByRole("alert");
+  // Inline error names the allowed domains. Scope by id because Next.js
+  // injects a route-announcer with role="alert" that would otherwise
+  // collide with this locator under strict mode.
+  const error = page.locator("#email-error");
   await expect(error).toBeVisible();
+  await expect(error).toHaveAttribute("role", "alert");
   await expect(error).toContainText("@hmcts.net");
   await expect(error).toContainText("@justice.gov.uk");
 
