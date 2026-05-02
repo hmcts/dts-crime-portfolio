@@ -42,7 +42,15 @@ export async function resolveUser(): Promise<UserContext> {
   return { kind: "authorized", email, isAdmin, editableProjects };
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Non-ambiguous email shape. The previous form `^[^\s@]+@[^\s@]+\.[^\s@]+$`
+// allowed `.` inside the second `[^\s@]+`, which made the split between the
+// second and third segments ambiguous and produced polynomial backtracking
+// on inputs like `!@!.!.!.` (CodeQL js/redos). Excluding `.` from the
+// per-label segments makes each label greedy-consume up to the next `.`
+// with no overlap; the regex is linear-time. Same accept/reject semantics
+// for real emails. The submission validator at `lib/submission/validator.ts`
+// uses the same pattern — keep them in sync.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
 export function isValidEmail(value: string): boolean {
   return EMAIL_PATTERN.test(value);
