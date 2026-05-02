@@ -124,6 +124,13 @@ first.
 - **Idempotent writes** for submission, prompt upvote, and prompt comment.
 - **Tooltip explainer copy is content-managed in Sanity** — don't hardcode
   jargon explainers in components.
+- **Redirect-returning routes use a relative `Location`** and SHALL have a
+  unit test driving a request URL with a deployment-platform-internal
+  host (e.g. `https://localhost:10000` for Render), asserting the
+  response Location is what you expect *and* does not contain that
+  internal host. See [`docs/testing-redirects.md`](docs/testing-redirects.md)
+  for the full rule and the canonical example
+  (`tests/preview-auth-sign-out-route.test.ts`).
 
 ## Sanity
 
