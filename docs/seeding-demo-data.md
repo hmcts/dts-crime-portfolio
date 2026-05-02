@@ -19,13 +19,42 @@ content covers:
 Every document uses a deterministic `_id` (prefixed `demo-…`), so re-running
 the script overwrites the same records — no duplicates, safe to iterate.
 
-## One-liner
+## How to run it
+
+Two paths. Pick whichever is closer to hand.
+
+### Path A — GitHub Actions (recommended)
+
+The repo carries a `seed-demo` workflow that runs the script in CI
+using the `SANITY_API_TOKEN` repository secret. No local secret needed.
+
+1. GitHub repo → **Actions** → **seed-demo** → **Run workflow**.
+2. Pick `dataset: preview` (the workflow refuses `production`; `local`
+   is offered for completeness and isn't usually wired up).
+3. Tick **Dry run** for a count-only preview; leave unticked to write.
+4. The job log prints "created N documents of type X" per type plus a
+   final summary.
+
+A second dispatch against the same dataset queues rather than races
+(workflow concurrency is keyed on the dataset).
+
+### Path B — local one-liner
+
+Useful when iterating on the script itself.
 
 ```sh
 SANITY_API_TOKEN=<editor-scope-token> pnpm seed:demo
 ```
 
-## Where the token comes from
+Dry-run:
+
+```sh
+pnpm seed:demo -- --dry-run
+```
+
+Prints the document counts that *would* be created without contacting Sanity.
+
+## Where the token comes from (path B only)
 
 You need an **Editor**-scope token on the `preview` dataset:
 
@@ -36,15 +65,6 @@ You need an **Editor**-scope token on the `preview` dataset:
   token has Editor scope on `preview`.
 
 The token is only consumed locally by this script; it is not committed.
-
-## Dry-run
-
-```sh
-pnpm seed:demo -- --dry-run
-```
-
-Prints the document counts that *would* be created without contacting Sanity.
-Useful as a pre-flight check.
 
 ## Wipe and re-seed
 
