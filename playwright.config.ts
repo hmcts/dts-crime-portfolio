@@ -82,6 +82,12 @@ export default defineConfig({
       // to the local fixture server.
       NODE_OPTIONS: `--require ${JSON.stringify(PRELOAD_PATH)}`,
       SANITY_MOCK_PROXY: SANITY_MOCK_URL,
+      // Scope the Admin allowlist to a single dedicated email so the
+      // edit-studio spec can sign in as an Admin without granting
+      // admin powers to `tester@hmcts.net` (the default in
+      // `playwright/fixtures/sign-in.ts`), which would break the
+      // Viewer assertions in `access-control.spec.ts`.
+      ADMIN_ALLOWLIST: "editor@hmcts.net",
     },
   },
 });
