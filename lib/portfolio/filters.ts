@@ -3,9 +3,8 @@ import { isTier, type Tier } from "@/lib/enums/tier";
 
 /**
  * Multi-select filter state for the /portfolio card grid. Mirrored to the
- * URL query string so filters are bookmarkable and shared with the galaxy
- * view. Spec: openspec/specs/portfolio-management/spec.md (Multi-select
- * filters).
+ * URL query string so filters are bookmarkable. Spec:
+ * openspec/specs/portfolio-management/spec.md (Multi-select filters).
  *
  * Free-text search lives in this shape but the UI for it lands in a
  * follow-up PR; the server-side query already honours it.

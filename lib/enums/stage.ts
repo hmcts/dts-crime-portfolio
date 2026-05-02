@@ -12,7 +12,7 @@ export const STAGE_LABELS: Record<Stage, string> = {
 };
 
 // Tailwind class pairs for stage pills. Used by portfolio cards, dossier
-// header, galaxy stars, and PowerPoint exports — keep in sync with each.
+// header, and PowerPoint exports — keep in sync with each.
 export const STAGE_PILL_CLASSES: Record<Stage, { bg: string; fg: string }> = {
   idea: { bg: "bg-neutral-100", fg: "text-neutral-700" },
   scan: { bg: "bg-amber-100", fg: "text-amber-800" },

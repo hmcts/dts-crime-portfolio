@@ -108,7 +108,7 @@ first.
 - **Roles use exact names.** `Viewer`, `Editor`, `Admin` — no synonyms in
   code, copy, comments, or specs.
 - **Stage and Tier are shared enums.** One TypeScript source of truth used
-  by the Sanity schema, forms, cards, galaxy colour map, and exports.
+  by the Sanity schema, forms, cards, and exports.
 - **Reference-data endpoint is the dropdown lynchpin.** Every form and
   filter consumes `/api/portfolios/reference-data` once on mount. Don't
   add per-dropdown fetches.

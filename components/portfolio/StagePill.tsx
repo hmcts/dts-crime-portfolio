@@ -1,9 +1,8 @@
 import { STAGE_LABELS, STAGE_PILL_CLASSES, type Stage } from "@/lib/enums/stage";
 
 /**
- * Stage pill used by the portfolio card, dossier header, galaxy stars,
- * and PowerPoint exports. Source of truth for colours and labels is
- * `lib/enums/stage.ts`.
+ * Stage pill used by the portfolio card, dossier header, and PowerPoint
+ * exports. Source of truth for colours and labels is `lib/enums/stage.ts`.
  */
 export function StagePill({ stage }: { stage: Stage }) {
   const classes = STAGE_PILL_CLASSES[stage];

@@ -1,5 +1,7 @@
 # 2026-05-02 — Design and research assessment of the preview
 
+**Update 2026-05-02:** Galaxy view killed (see `decisions/2026-05-02-kill-galaxy-view.md`). Galaxy-related findings below are preserved as a snapshot of the assessment at the time it was written and intentionally not edited.
+
 A multi-persona user-centred-design (UCD) assessment of the
 `dts-crime-portfolio-preview.onrender.com` build. Conducted by the team's
 five GDS-aligned design specialists (Service Designer, Interaction Designer,

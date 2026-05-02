@@ -42,7 +42,7 @@ Default mix:
 - Accessibility Specialist: 1
 
 #### Scenario: Multi-surface feature
-- **WHEN** a feature spans several independent UI surfaces (e.g. portfolio + dossier + galaxy)
+- **WHEN** a feature spans several independent UI surfaces (e.g. portfolio + dossier + action plan)
 - **THEN** the team SHALL include one Frontend Developer per independent surface
 - **AND** each Frontend Developer SHALL operate within the team's coordination model with no hidden parallel work
 - **AND** the QA / Test Engineer count SHALL match so each surface has explicit verification
@@ -271,7 +271,7 @@ PR descriptions and OpenSpec change proposals SHALL link to the relevant decisio
 - **AND** any future PR re-proposing the same build SHALL link to that decision file and either address it directly or trigger an explicit re-open of the decision
 
 #### Scenario: Architectural choice is logged
-- **WHEN** the Technical Architect picks one approach over another (e.g. "use server components for the dossier", "defer canvas/WebGL for galaxy v0")
+- **WHEN** the Technical Architect picks one approach over another (e.g. "use server components for the dossier", "client-side exports via exceljs / docx")
 - **THEN** a decision file SHALL be added with the alternatives and rationale
 - **AND** the decision file SHALL be linked from any PR that depends on the choice
 
