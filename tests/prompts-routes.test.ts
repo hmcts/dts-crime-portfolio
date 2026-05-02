@@ -41,9 +41,14 @@ vi.mock("@/lib/sanity/client", () => ({
 import { POST as createPromptRoute } from "@/app/api/prompts/route";
 import { POST as upvotePromptRoute } from "@/app/api/prompts/[id]/upvote/route";
 import { POST as commentPromptRoute } from "@/app/api/prompts/[id]/comments/route";
+import { POST as commentUpvoteRoute } from "@/app/api/prompts/[id]/comments/[commentKey]/upvote/route";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
+}
+
+interface CommentUpvoteRouteContext {
+  params: Promise<{ id: string; commentKey: string }>;
 }
 
 function makeJsonRequest(url: string, body: unknown, method = "POST"): Request {
@@ -56,6 +61,10 @@ function makeJsonRequest(url: string, body: unknown, method = "POST"): Request {
 
 function makeIdContext(id: string): RouteContext {
   return { params: Promise.resolve({ id }) };
+}
+
+function makeCommentContext(id: string, commentKey: string): CommentUpvoteRouteContext {
+  return { params: Promise.resolve({ id, commentKey }) };
 }
 
 function resetMocks() {
@@ -501,7 +510,17 @@ describe("POST /api/prompts/[id]/comments", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ count: 2 });
+    const json = (await response.json()) as {
+      count: number;
+      comment: { _key: string; body: string; createdAt: string; parentKey: string | null };
+    };
+    expect(json.count).toBe(2);
+    expect(json.comment.body).toBe("Looks good!");
+    expect(json.comment.parentKey).toBeNull();
+    expect(typeof json.comment._key).toBe("string");
+    // The response shape MUST NOT carry the author's email back to the
+    // client — the listing surface keeps that strictly server-side.
+    expect(json.comment).not.toHaveProperty("userEmail");
 
     expect(sanityClientMock.transaction.patch).toHaveBeenCalledOnce();
     const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
@@ -554,5 +573,330 @@ describe("POST /api/prompts/[id]/comments", () => {
 
     const log = changeLogRows()[0]!;
     expect(log.userEmail).toBe("viewer@hmcts.net");
+  });
+
+  it("appends a reply when parentKey matches an existing top-level comment", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        {
+          _key: "kparent",
+          userEmail: "old@hmcts.net",
+          body: "Top-level",
+          createdAt: "2025-01-01T00:00:00Z",
+        },
+      ],
+    });
+
+    const response = await commentPromptRoute(
+      makeJsonRequest("http://localhost/api/prompts/p1/comments", {
+        body: "Replying inline",
+        parentKey: "kparent",
+      }),
+      makeIdContext("p1"),
+    );
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as {
+      count: number;
+      comment: { _key: string; body: string; parentKey: string | null };
+    };
+    expect(json.count).toBe(2);
+    expect(json.comment.parentKey).toBe("kparent");
+
+    const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
+      string,
+      { insert: { items: Array<{ parentKey?: string; body: string }> } },
+    ];
+    expect(patchCall[1].insert.items[0]!.parentKey).toBe("kparent");
+    expect(patchCall[1].insert.items[0]!.body).toBe("Replying inline");
+  });
+
+  it("returns 400 when parentKey does not match any existing comment", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        { _key: "k0", userEmail: "old@hmcts.net", body: "x", createdAt: "2025-01-01T00:00:00Z" },
+      ],
+    });
+
+    const response = await commentPromptRoute(
+      makeJsonRequest("http://localhost/api/prompts/p1/comments", {
+        body: "Replying to nothing",
+        parentKey: "does-not-exist",
+      }),
+      makeIdContext("p1"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(sanityClientMock.transaction.commit).not.toHaveBeenCalled();
+  });
+
+  it("rejects a reply-of-a-reply with 400 (single nesting level only)", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        { _key: "ktop", userEmail: "a@hmcts.net", body: "top", createdAt: "2025-01-01T00:00:00Z" },
+        {
+          _key: "kreply",
+          userEmail: "b@hmcts.net",
+          body: "reply",
+          createdAt: "2025-01-02T00:00:00Z",
+          parentKey: "ktop",
+        },
+      ],
+    });
+
+    const response = await commentPromptRoute(
+      makeJsonRequest("http://localhost/api/prompts/p1/comments", {
+        body: "deep",
+        parentKey: "kreply",
+      }),
+      makeIdContext("p1"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(sanityClientMock.transaction.commit).not.toHaveBeenCalled();
+  });
+
+  it("treats an empty-string parentKey as absent (top-level comment)", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [],
+    });
+
+    const response = await commentPromptRoute(
+      makeJsonRequest("http://localhost/api/prompts/p1/comments", {
+        body: "Hello",
+        parentKey: "",
+      }),
+      makeIdContext("p1"),
+    );
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as { comment: { parentKey: string | null } };
+    expect(json.comment.parentKey).toBeNull();
+  });
+});
+
+describe("POST /api/prompts/[id]/comments/[commentKey]/upvote", () => {
+  beforeEach(() => {
+    resetMocks();
+  });
+
+  it("returns 401 when the resolver short-circuits as unauthorized", async () => {
+    resolveUserMock.mockResolvedValue({ kind: "unauthorized", reason: "missing-header" });
+
+    const response = await commentUpvoteRoute(
+      new Request("http://localhost/api/prompts/p1/comments/k1/upvote", { method: "POST" }),
+      makeCommentContext("p1", "k1"),
+    );
+
+    expect(response.status).toBe(401);
+    expect(sanityClientMock.client.fetch).not.toHaveBeenCalled();
+    expect(sanityClientMock.transaction.commit).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the prompt does not exist", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce(null);
+
+    const response = await commentUpvoteRoute(
+      new Request("http://localhost/api/prompts/missing/comments/k1/upvote", { method: "POST" }),
+      makeCommentContext("missing", "k1"),
+    );
+
+    expect(response.status).toBe(404);
+    expect(sanityClientMock.transaction.commit).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the commentKey does not exist on the prompt", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        { _key: "k0", userEmail: "x@hmcts.net", body: "x", createdAt: "2025-01-01T00:00:00Z" },
+      ],
+    });
+
+    const response = await commentUpvoteRoute(
+      new Request("http://localhost/api/prompts/p1/comments/missing/upvote", { method: "POST" }),
+      makeCommentContext("p1", "missing"),
+    );
+
+    expect(response.status).toBe(404);
+    expect(sanityClientMock.transaction.commit).not.toHaveBeenCalled();
+  });
+
+  it("appends an upvote on first POST and writes one ChangeLog row scoped to the comment", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        {
+          _key: "k0",
+          userEmail: "author@hmcts.net",
+          body: "looks great",
+          createdAt: "2025-01-01T00:00:00Z",
+        },
+      ],
+    });
+
+    const response = await commentUpvoteRoute(
+      new Request("http://localhost/api/prompts/p1/comments/k0/upvote", { method: "POST" }),
+      makeCommentContext("p1", "k0"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ count: 1, hasUpvote: true });
+
+    const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
+      string,
+      { set: { comments: Array<{ _key: string; upvotes?: Array<{ userEmail: string }> }> } },
+    ];
+    expect(patchCall[0]).toBe("p1");
+    const target = patchCall[1].set.comments.find((entry) => entry._key === "k0")!;
+    expect(target.upvotes).toHaveLength(1);
+    expect(target.upvotes![0]!.userEmail).toBe("viewer@hmcts.net");
+
+    const logs = changeLogRows();
+    expect(logs).toHaveLength(1);
+    expect(logs[0]!.documentId).toBe("p1");
+    expect(logs[0]!.documentType).toBe("prompt");
+    expect(logs[0]!.field).toContain("k0");
+    expect(logs[0]!.userEmail).toBe("viewer@hmcts.net");
+  });
+
+  it("toggles off when the same user POSTs a second time (idempotent)", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        {
+          _key: "k0",
+          userEmail: "author@hmcts.net",
+          body: "x",
+          createdAt: "2025-01-01T00:00:00Z",
+          upvotes: [
+            { _key: "u1", userEmail: "viewer@hmcts.net", createdAt: "2025-01-02T00:00:00Z" },
+            { _key: "u2", userEmail: "other@hmcts.net", createdAt: "2025-01-03T00:00:00Z" },
+          ],
+        },
+      ],
+    });
+
+    const response = await commentUpvoteRoute(
+      new Request("http://localhost/api/prompts/p1/comments/k0/upvote", { method: "POST" }),
+      makeCommentContext("p1", "k0"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ count: 1, hasUpvote: false });
+
+    const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
+      string,
+      { set: { comments: Array<{ _key: string; upvotes?: Array<{ userEmail: string }> }> } },
+    ];
+    const target = patchCall[1].set.comments.find((entry) => entry._key === "k0")!;
+    expect(target.upvotes).toHaveLength(1);
+    expect(target.upvotes![0]!.userEmail).toBe("other@hmcts.net");
+  });
+
+  it("leaves sibling comments untouched on the patched array", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        {
+          _key: "k0",
+          userEmail: "author@hmcts.net",
+          body: "first",
+          createdAt: "2025-01-01T00:00:00Z",
+        },
+        {
+          _key: "k1",
+          userEmail: "other@hmcts.net",
+          body: "second",
+          createdAt: "2025-01-02T00:00:00Z",
+        },
+      ],
+    });
+
+    const response = await commentUpvoteRoute(
+      new Request("http://localhost/api/prompts/p1/comments/k1/upvote", { method: "POST" }),
+      makeCommentContext("p1", "k1"),
+    );
+
+    expect(response.status).toBe(200);
+    const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
+      string,
+      {
+        set: {
+          comments: Array<{
+            _key: string;
+            upvotes?: Array<{ userEmail: string }>;
+            body: string;
+          }>;
+        };
+      },
+    ];
+    const k0 = patchCall[1].set.comments.find((entry) => entry._key === "k0")!;
+    const k1 = patchCall[1].set.comments.find((entry) => entry._key === "k1")!;
+    // The untargeted comment is preserved verbatim — including no
+    // accidental `upvotes` populated by the route.
+    expect(k0.body).toBe("first");
+    expect(k0.upvotes).toBeUndefined();
+    // The target comment has the new upvote.
+    expect(k1.upvotes).toHaveLength(1);
+    expect(k1.upvotes![0]!.userEmail).toBe("viewer@hmcts.net");
   });
 });

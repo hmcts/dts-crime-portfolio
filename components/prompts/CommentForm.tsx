@@ -1,25 +1,57 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+
+import type { PromptComment } from "@/lib/prompts/types";
 
 interface CommentFormProps {
   promptId: string;
-  initialCount: number;
+  /**
+   * When set the form is rendered as a reply to that comment — the
+   * server validates the key against the prompt's existing comments
+   * and appends the new entry with `parentKey` populated.
+   */
+  parentKey?: string;
+  placeholder?: string;
+  submitLabel?: string;
+  /**
+   * Called with the appended comment after a successful POST so the
+   * parent surface (the modal) can render it without waiting on a
+   * full refresh.
+   */
+  onPosted?: (comment: PromptComment, count: number) => void;
+  /** Called when the user cancels a reply form (only relevant for replies). */
+  onCancel?: () => void;
+  autoFocus?: boolean;
 }
 
 /**
- * Append-a-comment form for a prompt card. POSTs to
- * `/api/prompts/[id]/comments` with the body string. Empty submissions
- * are rejected client-side and on the server. On success the optimistic
- * comment count is replaced by the authoritative count from the response.
+ * Plain inline form for posting a comment (or a reply, when
+ * `parentKey` is set) on a prompt. POSTs to
+ * `/api/prompts/[id]/comments`. Empty submissions are rejected client-
+ * side and on the server. On success the appended entry is handed
+ * back to the parent via `onPosted` so the modal can render it
+ * without waiting on a `router.refresh()`.
  *
- * Spec: openspec/specs/prompts-library/spec.md (Comments).
+ * Earlier versions of this component wrapped the form in a
+ * `<details>`/`<summary>` accordion on the card. The redesigned card
+ * no longer carries any comment-write affordance, so the accordion is
+ * gone — see spec scenario "Card no longer carries an inline comment
+ * form".
+ *
+ * Spec: openspec/specs/prompts-library/spec.md (Comments,
+ * Single-level threaded replies).
  */
-export function CommentForm({ promptId, initialCount }: CommentFormProps) {
-  const router = useRouter();
+export function CommentForm({
+  promptId,
+  parentKey,
+  placeholder = "Share your thoughts…",
+  submitLabel = "Post Comment",
+  onPosted,
+  onCancel,
+  autoFocus = false,
+}: CommentFormProps) {
   const [body, setBody] = useState("");
-  const [count, setCount] = useState(initialCount);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,9 +64,6 @@ export function CommentForm({ promptId, initialCount }: CommentFormProps) {
       return;
     }
 
-    const previousCount = count;
-    const optimisticCount = previousCount + 1;
-    setCount(optimisticCount);
     setSubmitting(true);
     try {
       const response = await fetch(
@@ -42,11 +71,13 @@ export function CommentForm({ promptId, initialCount }: CommentFormProps) {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ body: trimmed }),
+          body: JSON.stringify({
+            body: trimmed,
+            ...(parentKey ? { parentKey } : {}),
+          }),
         },
       );
       if (!response.ok) {
-        setCount(previousCount);
         if (response.status === 400) {
           setError("Comment cannot be empty.");
         } else if (response.status === 401) {
@@ -56,14 +87,38 @@ export function CommentForm({ promptId, initialCount }: CommentFormProps) {
         }
         return;
       }
-      const data = (await response.json()) as { count?: number };
-      if (typeof data.count === "number") {
-        setCount(data.count);
-      }
+      const data = (await response.json()) as {
+        count?: number;
+        comment?: {
+          _key: string;
+          body: string;
+          createdAt: string | null;
+          parentKey: string | null;
+        };
+      };
       setBody("");
-      router.refresh();
+      if (onPosted && data.comment && typeof data.count === "number") {
+        // Hand the appended entry back to the parent so it can append
+        // it locally. We deliberately do NOT call `router.refresh()`
+        // from inside the modal — refreshing while a `<dialog>` is
+        // open would re-mount the dialog and reset its internal
+        // comments list to the server's projection, which on the
+        // optimistic path is one step behind. The parent surface picks
+        // up the new comment on the next navigation.
+        onPosted(
+          {
+            _key: data.comment._key,
+            body: data.comment.body,
+            createdAt: data.comment.createdAt,
+            parentKey: data.comment.parentKey,
+            authorName: null,
+            authorSeed: null,
+            upvoteCount: 0,
+          },
+          data.count,
+        );
+      }
     } catch {
-      setCount(previousCount);
       setError("Failed to post comment. Please try again.");
     } finally {
       setSubmitting(false);
@@ -71,42 +126,44 @@ export function CommentForm({ promptId, initialCount }: CommentFormProps) {
   }
 
   return (
-    <details className="w-full">
-      <summary
-        aria-label={`${count} comments — add a comment`}
-        className="cursor-pointer list-none text-xs text-neutral-600 hover:text-neutral-800"
-      >
-        <span>💬 {count}</span>
-        <span className="ml-2 text-blue-700 underline underline-offset-2">Comment</span>
-      </summary>
-      <form
-        onSubmit={handleSubmit}
-        className="mt-2 flex w-full flex-col gap-1.5"
-        aria-label="Add a comment"
-      >
-        <textarea
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          disabled={submitting}
-          rows={2}
-          placeholder="Add a comment…"
-          className="min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        <div className="flex items-center justify-end gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="flex w-full flex-col gap-2"
+      aria-label={parentKey ? "Reply to comment" : "Add a comment"}
+    >
+      <textarea
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+        disabled={submitting}
+        rows={3}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        className="min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      />
+      <div className="flex items-center justify-end gap-2">
+        {onCancel && (
           <button
-            type="submit"
+            type="button"
+            onClick={onCancel}
             disabled={submitting}
-            className="inline-flex items-center rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 hover:border-neutral-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "Posting…" : "Submit"}
+            Cancel
           </button>
-        </div>
-        {error && (
-          <p role="alert" className="text-xs text-rose-700">
-            {error}
-          </p>
         )}
-      </form>
-    </details>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="inline-flex items-center rounded-md bg-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-300 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting ? "Posting…" : submitLabel}
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="text-xs text-rose-700">
+          {error}
+        </p>
+      )}
+    </form>
   );
 }
