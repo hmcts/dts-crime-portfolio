@@ -29,6 +29,11 @@ graph LR
         EnvSanityToken[/"SANITY_API_TOKEN<br/><i>Editor, scoped to preview</i>"/]:::secret
         EnvCookieSecret[/"PREVIEW_AUTH_COOKIE_SECRET<br/><i>32+ hex bytes</i>"/]:::secret
         EnvAdmin[/"ADMIN_ALLOWLIST<br/><i>comma-separated emails</i>"/]:::secret
+        EnvPostHogKey[/"POSTHOG_PROJECT_KEY<br/><i>phc_…</i>"/]:::secret
+        EnvPostHogUrl[/"POSTHOG_INGEST_URL<br/><i>EU or US region</i>"/]:::secret
+        EnvIngestMode[/"ANALYTICS_INGEST_MODE<br/>= proxy"/]:::secret
+        EnvPepper[/"ANALYTICS_USER_ID_PEPPER<br/><i>32 hex bytes</i>"/]:::secret
+        EnvDropIp[/"ANALYTICS_DROP_IP=true"/]:::secret
     end
 
     GitHub -->|"webhook on push"| WebService
@@ -56,6 +61,28 @@ The `SANITY_API_TOKEN` issued for the preview service is scoped to the `preview`
 - **Start:** `pnpm start`. Bound to Render's auto-assigned port via `process.env.PORT`.
 - **Free Starter plan caveat:** sleeps after 15 minutes of inactivity. First request after a sleep takes ~30s to wake. Acceptable for a feedback preview; not acceptable for production.
 - **Custom domain:** none yet; default `<service>.onrender.com` is fine for the preview audience.
+
+## Analytics wiring
+
+PostHog wiring is entirely env-driven; the portal has no PostHog SDK
+dependency. `lib/analytics/client.ts` POSTs JSON via `fetch` either
+direct to PostHog or through the same-origin
+`/api/analytics/ingest` proxy.
+
+- `POSTHOG_PROJECT_KEY` (secret) — the `phc_…` Project API key. In
+  `proxy` mode the browser never sees it.
+- `POSTHOG_INGEST_URL` — `https://eu.i.posthog.com` for EU Cloud (the
+  default) or `https://us.i.posthog.com` for US Cloud. Self-hosted
+  targets work too.
+- `ANALYTICS_INGEST_MODE` — `proxy` (recommended) routes through
+  `/api/analytics/ingest`. `direct` lets the browser POST straight to
+  PostHog with the project key.
+- `ANALYTICS_USER_ID_PEPPER` (secret) — salt for the SHA-256 of the
+  signed-in user's email. Without it events ship as `anonymous`.
+  Generate with `openssl rand -hex 32`. Treat as long-lived; rotation
+  resets identifier stability.
+- `ANALYTICS_DROP_IP=true` — strips `x-forwarded-for` / `x-real-ip`
+  before the proxy forwards. Privacy-by-default for preview.
 
 ## What's NOT in this diagram
 
