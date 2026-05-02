@@ -9,12 +9,16 @@ updates:
     labels:
       - dependencies
     groups:
-      dev-dependencies:
+      # Dev dependencies — minor and patch only. Major bumps (e.g.
+      # ESLint 9→10, TypeScript 5→6, Vitest 3→4) come through as
+      # individual PRs so each can be assessed and migrated in
+      # isolation. See retrospectives/
+      # 2026-05-02-wave-1-and-ignored-playwright-failures.md (action #4).
+      dev-dependencies-minor-patch:
         dependency-type: development
         update-types:
           - minor
           - patch
-          - major
       runtime-minor-patch:
         dependency-type: production
         update-types:

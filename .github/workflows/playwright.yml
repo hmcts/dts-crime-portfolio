@@ -13,9 +13,32 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Always-succeeding guard. Replaces the previous job-level
+  # `if: hashFiles('playwright.config.ts') != ''`, which caused
+  # GitHub Actions to report the workflow conclusion as `failure`
+  # rather than `success` / `skipped` when all jobs were skipped.
+  # See retrospectives/2026-05-02-wave-1-and-ignored-playwright-failures.md.
+  guard:
+    name: detect playwright config
+    runs-on: ubuntu-latest
+    outputs:
+      has_config: ${{ steps.check.outputs.has_config }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: check
+        run: |
+          if [ -f playwright.config.ts ]; then
+            echo "has_config=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::playwright.config.ts present — running e2e job."
+          else
+            echo "has_config=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No playwright.config.ts at HEAD; skipping e2e."
+          fi
+
   e2e:
-    if: hashFiles('playwright.config.ts') != ''
     name: e2e
+    needs: guard
+    if: needs.guard.outputs.has_config == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
