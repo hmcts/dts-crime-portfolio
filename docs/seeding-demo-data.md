@@ -14,7 +14,7 @@ content covers:
   4 action plan strands
 - 12 projects spanning every stage (idea → scan → pilot → scale → stalled →
   sunset) with realistic Tier 1–3 governance, updates, and survey details
-- 10 FAQs, 6 learning items, 8 prompts, 6 events, 5 ChangeLog rows
+- 10 FAQs, 5 learning items, 8 prompts, 5 events, 5 ChangeLog rows
 
 Every document uses a deterministic `_id` (prefixed `demo-…`), so re-running
 the script overwrites the same records — no duplicates, safe to iterate.
