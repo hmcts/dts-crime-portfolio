@@ -28,7 +28,13 @@ export interface ValidationSuccess {
 
 export type ValidationResult = ValidationSuccess | ValidationFailure;
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Non-ambiguous email shape. The previous form `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
+// allowed `.` inside the second `[^\s@]+`, which made the split between the
+// second and third segments ambiguous and produced polynomial backtracking
+// on inputs like `!@!.!.!.` (CodeQL js/redos). The version below excludes
+// `.` from the per-label segments so each label greedy-consumes everything
+// up to the next `.` and the regex is linear-time.
+const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
 function fail(error: string, details?: Record<string, string>): ValidationFailure {
   return { ok: false, error, details };
