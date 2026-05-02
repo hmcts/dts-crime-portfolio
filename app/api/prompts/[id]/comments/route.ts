@@ -21,6 +21,7 @@ interface CommentEntry {
   userEmail: string;
   body: string;
   createdAt: string;
+  parentKey?: string;
 }
 
 interface PromptForComment {
@@ -39,11 +40,20 @@ const PROMPT_FOR_COMMENT_QUERY = /* groq */ `
  * POST /api/prompts/[id]/comments
  *
  * Append a comment to a prompt. Body must contain a non-empty `body`
- * string. The author email always comes from the auth resolver, never
- * from the request body. Every successful write produces one ChangeLog
- * row recording the before/after comments arrays.
+ * string and may include an optional `parentKey` referencing the `_key`
+ * of an existing comment on the same prompt to make the new entry a
+ * reply (single nesting level — see
+ * `openspec/specs/prompts-library/spec.md` "Single-level threaded
+ * replies"). The author email always comes from the auth resolver,
+ * never from the request body. Every successful write produces one
+ * ChangeLog row recording the before/after comments arrays.
  *
- * Spec: openspec/specs/prompts-library/spec.md (Comments),
+ * Response: `{ count, comment }` — `count` is the new comments-array
+ * length, `comment` is the appended entry (without `userEmail`) so the
+ * client can render without a re-fetch.
+ *
+ * Spec: openspec/specs/prompts-library/spec.md (Comments,
+ * Single-level threaded replies),
  * openspec/specs/change-tracking/spec.md.
  */
 async function handlePost(request: Request, context: RouteContext): Promise<Response> {
@@ -67,10 +77,26 @@ async function handlePost(request: Request, context: RouteContext): Promise<Resp
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const { body: rawBody } = body as { body?: unknown };
+  const { body: rawBody, parentKey: rawParentKey } = body as {
+    body?: unknown;
+    parentKey?: unknown;
+  };
   const commentBody = typeof rawBody === "string" ? rawBody.trim() : "";
   if (!commentBody) {
     return NextResponse.json({ error: "Comment body is required" }, { status: 400 });
+  }
+  // `parentKey` is optional but, when present, must be a non-empty
+  // string. We validate the actual key exists on the prompt below, after
+  // the fetch.
+  let parentKey: string | undefined;
+  if (rawParentKey !== undefined && rawParentKey !== null && rawParentKey !== "") {
+    if (typeof rawParentKey !== "string") {
+      return NextResponse.json(
+        { error: "parentKey must be a string" },
+        { status: 400 },
+      );
+    }
+    parentKey = rawParentKey;
   }
 
   const client = getSanityClient();
@@ -82,11 +108,31 @@ async function handlePost(request: Request, context: RouteContext): Promise<Resp
   }
 
   const before: CommentEntry[] = Array.isArray(prompt.comments) ? prompt.comments : [];
+
+  if (parentKey !== undefined) {
+    const parent = before.find((entry) => entry._key === parentKey);
+    if (!parent) {
+      return NextResponse.json(
+        { error: "parentKey does not match any existing comment on this prompt" },
+        { status: 400 },
+      );
+    }
+    // No reply-of-a-reply in v1: reject if the named parent already has
+    // its own parentKey set. Spec scenario: "No reply-of-a-reply in v1".
+    if (parent.parentKey) {
+      return NextResponse.json(
+        { error: "Cannot reply to a reply (v1 supports a single nesting level)" },
+        { status: 400 },
+      );
+    }
+  }
+
   const newEntry: CommentEntry = {
     _key: crypto.randomUUID(),
     userEmail: user.email,
     body: commentBody,
     createdAt: new Date().toISOString(),
+    ...(parentKey !== undefined ? { parentKey } : {}),
   };
   const after: CommentEntry[] = [...before, newEntry];
 
@@ -111,7 +157,17 @@ async function handlePost(request: Request, context: RouteContext): Promise<Resp
     client,
   });
 
-  return NextResponse.json({ count: after.length });
+  // The client gets the appended entry without `userEmail` so the
+  // public read shape never carries author email — same posture as
+  // the list query.
+  const safeComment = {
+    _key: newEntry._key,
+    body: newEntry.body,
+    createdAt: newEntry.createdAt,
+    parentKey: newEntry.parentKey ?? null,
+  };
+
+  return NextResponse.json({ count: after.length, comment: safeComment });
 }
 
 export const POST = withRequestLogging(handlePost);

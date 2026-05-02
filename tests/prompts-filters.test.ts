@@ -19,8 +19,10 @@ function prompt(overrides: Partial<PromptListItem> & { _id: string }): PromptLis
     tags: [],
     createdAt: "2026-01-01T00:00:00.000Z",
     authorName: "Author",
+    authorSeed: null,
     upvoteCount: 0,
     commentCount: 0,
+    comments: [],
     competitionMonth: null,
     ...overrides,
   };

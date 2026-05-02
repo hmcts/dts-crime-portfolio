@@ -1097,13 +1097,219 @@ const learning: SanityDoc[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Prompts (8)
+// Prompts (8) with comments, replies, and per-comment upvotes
 // ---------------------------------------------------------------------------
+//
+// The card and modal redesign (`expand-prompts-comments-and-replies`)
+// turns the comments thread into a primary surface, so the demo needs a
+// believable conversation around each prompt — questions, kudos, edge-
+// case challenges, and an occasional reply. The lists below are picked
+// to keep the modal feeling lived-in without paragraphs of lorem.
+//
+// Privacy: the listing surface never exposes commenter email — author
+// display name and a stable `authorSeed` (person._id, hashed in the
+// component) are the only things the client sees. Hosting the seed
+// fictional emails here is fine for the same reason the rest of this
+// file does — they are obviously test data and the script refuses to
+// run against the production dataset.
 
-const prompts: SanityDoc[] = [
+interface CommenterFixture {
+  email: string;
+  name: string;
+}
+
+const COMMENTERS: Record<string, CommenterFixture> = {
+  emma: { email: "emma.hunter2@hmcts.net", name: "Emma Hunter2" },
+  yvonne: { email: "yvonne.lynn2@justice.gov.uk", name: "Yvonne Lynn2" },
+  natalie: { email: "natalie.stableford1@hmcts.net", name: "Natalie Stableford1" },
+  frank: { email: "frank.adler@justice.gov.uk", name: "Frank Adler" },
+  priya: { email: "priya.shah3@hmcts.net", name: "Priya Shah3" },
+  rob: { email: "rob.kelner@justice.gov.uk", name: "Rob Kelner" },
+  jas: { email: "jas.mitra@hmcts.net", name: "Jas Mitra" },
+  chuks: { email: "chuks.okafor@justice.gov.uk", name: "Chuks Okafor" },
+  lina: { email: "lina.beretta@hmcts.net", name: "Lina Beretta" },
+};
+
+// Stable Person documents for each commenter so the listing GROQ can
+// resolve `authorName` and `authorSeed` cleanly. Pre-existing demo
+// people (Alice, Cara, ...) are reused as commenters too — see
+// `commenterEmailFor` below.
+const commenterPeople: SanityDoc[] = Object.entries(COMMENTERS).map(
+  ([key, value]) => ({
+    _id: `demo-person-commenter-${key}`,
+    _type: "person",
+    name: value.name,
+    email: value.email,
+  }),
+);
+
+interface CommentSeed {
+  /** Stable label so replies can refer to a parent. */
+  label: string;
+  by: keyof typeof COMMENTERS | keyof typeof P;
+  daysAgo: number;
+  hoursAgo?: number;
+  body: string;
+  upvotes: number;
+  /** When set, marks this comment as a reply to the comment with this label. */
+  parent?: string;
+}
+
+function commenterEmailFor(by: string): string {
+  if (by in COMMENTERS) return COMMENTERS[by as keyof typeof COMMENTERS]!.email;
+  // Fall through to the existing P map (Alice, Cara, ...) — those get
+  // their email from the people array.
+  if (by in P) return emailFor((P as Record<string, string>)[by]!);
+  throw new Error(`Unknown commenter: ${by}`);
+}
+
+function commentTimestamp(daysAgoCount: number, hoursAgoCount = 0): string {
+  if (daysAgoCount === 0 && hoursAgoCount > 0) {
+    const d = new Date();
+    d.setUTCHours(d.getUTCHours() - hoursAgoCount, 0, 0, 0);
+    return d.toISOString();
+  }
+  return daysAgo(daysAgoCount, 9);
+}
+
+interface BuiltCommentEntry {
+  _key: string;
+  _type: "promptComment";
+  userEmail: string;
+  body: string;
+  createdAt: string;
+  parentKey?: string;
+  upvotes: Array<{
+    _key: string;
+    _type: "promptCommentUpvote";
+    userEmail: string;
+    createdAt: string;
+  }>;
+}
+
+/**
+ * Materialise a list of `CommentSeed` definitions into the inline
+ * comments array on a prompt. Replies are resolved by label so the
+ * fixtures stay readable; the resulting `parentKey` is the appropriate
+ * `_key` value on the parent.
+ *
+ * Per-comment upvote rosters are deterministic — we walk through a
+ * rotating slice of the commenter pool plus the existing demo people
+ * so the same comment on a re-run has the same upvote roster (the
+ * script is idempotent overall and we want this to stay true).
+ */
+function buildComments(
+  promptId: string,
+  seeds: CommentSeed[],
+): BuiltCommentEntry[] {
+  const upvoterPool: string[] = [
+    ...Object.values(COMMENTERS).map((c) => c.email),
+    emailFor(P.alice),
+    emailFor(P.cara),
+    emailFor(P.fern),
+    emailFor(P.gita),
+    emailFor(P.harry),
+  ];
+
+  const labelToKey = new Map<string, string>();
+  for (const seed of seeds) {
+    labelToKey.set(seed.label, hash(`${promptId}:${seed.label}`).slice(0, 12));
+  }
+
+  return seeds.map((seed, index) => {
+    const key = labelToKey.get(seed.label)!;
+    const parentKey = seed.parent ? labelToKey.get(seed.parent) : undefined;
+    const createdAt = commentTimestamp(seed.daysAgo, seed.hoursAgo);
+    const author = commenterEmailFor(seed.by);
+
+    // Upvote roster — deterministic slice of the pool, rotating by the
+    // comment's index so neighbouring comments don't share the same
+    // first voter. The author of the comment never upvotes their own;
+    // capping at `pool.length - 1` (i.e. the pool minus the author)
+    // prevents an unsatisfiable upvote target from looping forever.
+    const upvoteEmails: string[] = [];
+    if (seed.upvotes > 0) {
+      const maxRoster = Math.max(0, upvoterPool.length - 1);
+      const target = Math.min(seed.upvotes, maxRoster);
+      let cursor = (index * 3) % upvoterPool.length;
+      let safetyTrips = upvoterPool.length * 2;
+      while (upvoteEmails.length < target && safetyTrips-- > 0) {
+        const candidate = upvoterPool[cursor]!;
+        if (candidate !== author && !upvoteEmails.includes(candidate)) {
+          upvoteEmails.push(candidate);
+        }
+        cursor = (cursor + 1) % upvoterPool.length;
+      }
+    }
+
+    return {
+      _key: key,
+      _type: "promptComment",
+      userEmail: author,
+      body: seed.body,
+      createdAt,
+      ...(parentKey ? { parentKey } : {}),
+      upvotes: upvoteEmails.map((email, i) => ({
+        _key: hash(`${promptId}:${seed.label}:upvote:${i}`).slice(0, 12),
+        _type: "promptCommentUpvote",
+        userEmail: email,
+        createdAt: commentTimestamp(Math.max(0, seed.daysAgo - 1)),
+      })),
+    };
+  });
+}
+
+interface UpvoteEntry {
+  _key: string;
+  _type: "promptUpvote";
+  userEmail: string;
+  createdAt: string;
+}
+
+/**
+ * Materialise a fixed-count upvote roster on a prompt — picks
+ * deterministic emails from the commenter pool so each prompt gets
+ * a believable count without coupling it to the actual commenters.
+ */
+function buildPromptUpvotes(promptId: string, count: number): UpvoteEntry[] {
+  const pool: string[] = [
+    ...Object.values(COMMENTERS).map((c) => c.email),
+    emailFor(P.alice),
+    emailFor(P.cara),
+    emailFor(P.fern),
+    emailFor(P.gita),
+    emailFor(P.harry),
+  ];
+  const out: UpvoteEntry[] = [];
+  for (let i = 0; i < count && i < pool.length; i++) {
+    out.push({
+      _key: hash(`${promptId}:upvote:${i}`).slice(0, 12),
+      _type: "promptUpvote",
+      userEmail: pool[i]!,
+      createdAt: daysAgo(30 + (i % 60)),
+    });
+  }
+  return out;
+}
+
+interface PromptSeed {
+  id: string;
+  title: string;
+  summary: string;
+  body: string;
+  tool: string;
+  tags: string[];
+  authorId: string;
+  createdDaysAgo: number;
+  createdHour: number;
+  competitionMonth?: string;
+  upvoteCount: number;
+  comments: CommentSeed[];
+}
+
+const promptSeeds: PromptSeed[] = [
   {
-    _id: "demo-prompt-director-summary",
-    _type: "prompt",
+    id: "demo-prompt-director-summary",
     title: "Summarise this brief in 5 bullets for a Director",
     summary: "Quick read-down for senior leaders ahead of a 30-minute slot.",
     body:
@@ -1113,12 +1319,59 @@ const prompts: SanityDoc[] = [
       "ask. No preamble, no closing line.",
     tool: "claude",
     tags: ["#Operations", "#Communications"],
-    author: ref(P.alice),
-    createdAt: daysAgo(20, 11),
+    authorId: P.alice,
+    createdDaysAgo: 20,
+    createdHour: 11,
+    upvoteCount: 17,
+    comments: [
+      {
+        label: "kudos-emma",
+        by: "emma",
+        daysAgo: 18,
+        body: "Used this for a 9am steerco read-out — Director said it was the cleanest summary she'd had in months. Saved me at least an hour of fiddling with the wording.",
+        upvotes: 14,
+      },
+      {
+        label: "challenge-frank",
+        by: "frank",
+        daysAgo: 12,
+        body: "It will happily invent a 'biggest open risk' if you don't actually feed it the brief. Worth saying that explicitly in the prompt — I added 'use ONLY the text below' and it stopped hallucinating.",
+        upvotes: 22,
+      },
+      {
+        label: "reply-emma",
+        by: "alice",
+        daysAgo: 11,
+        parent: "challenge-frank",
+        body: "Good catch. I'll fold that into v2 of the prompt. The 'no preamble, no closing line' line was meant to handle some of that but you're right, it's not enough.",
+        upvotes: 6,
+      },
+      {
+        label: "q-natalie",
+        by: "natalie",
+        daysAgo: 5,
+        body: "Has anyone tried this against a longer brief (10+ pages)? It seems to lose the thread on the 'next decision needed' bullet for me.",
+        upvotes: 3,
+      },
+      {
+        label: "reply-natalie",
+        by: "fern",
+        daysAgo: 3,
+        parent: "q-natalie",
+        body: "Yes — for anything 5 pages+ I split it into sections first and ask for a 1-bullet summary per section, then ask the model to compress those into the final 5. Gets you a much tighter answer.",
+        upvotes: 9,
+      },
+      {
+        label: "kudos-rob",
+        by: "rob",
+        daysAgo: 1,
+        body: "Stealing this. Will report back after the next portfolio review.",
+        upvotes: 1,
+      },
+    ],
   },
   {
-    _id: "demo-prompt-acceptance-tests",
-    _type: "prompt",
+    id: "demo-prompt-acceptance-tests",
     title: "Convert acceptance criteria into a test list",
     summary: "Useful when handing a story over to QA.",
     body:
@@ -1128,12 +1381,44 @@ const prompts: SanityDoc[] = [
       "test data with a TODO line.",
     tool: "copilot",
     tags: ["#Tech", "#Operations"],
-    author: ref(P.cara),
-    createdAt: daysAgo(35, 14),
+    authorId: P.cara,
+    createdDaysAgo: 35,
+    createdHour: 14,
+    upvoteCount: 24,
+    comments: [
+      {
+        label: "kudos-priya",
+        by: "priya",
+        daysAgo: 30,
+        body: "This saved me about 90 minutes on a story handover yesterday. The TODO markers for fixture data are the bit I keep forgetting on my own.",
+        upvotes: 18,
+      },
+      {
+        label: "challenge-jas",
+        by: "jas",
+        daysAgo: 22,
+        body: "Two notes: (1) Copilot in chat-mode adds Gherkin syntax even when you say 'numbered list'. Adding 'do not use Given/When/Then keywords' fixed it for me. (2) The output is too verbose for a quick standup — I now ask for the precondition + action on one line each.",
+        upvotes: 11,
+      },
+      {
+        label: "reply-jas",
+        by: "cara",
+        daysAgo: 21,
+        parent: "challenge-jas",
+        body: "Both fair. I'll update the canonical version with both nudges. Thanks Jas.",
+        upvotes: 4,
+      },
+      {
+        label: "q-chuks",
+        by: "chuks",
+        daysAgo: 14,
+        body: "Does this work for non-functional acceptance criteria (perf, accessibility)? I tried it on an a11y AC and it gave me UI-driven steps which weren't what I wanted.",
+        upvotes: 5,
+      },
+    ],
   },
   {
-    _id: "demo-prompt-tier2-risk-register",
-    _type: "prompt",
+    id: "demo-prompt-tier2-risk-register",
     title: "Suggest a risk register for a Tier 2 project",
     summary: "Cold-start a risk register conversation; not a substitute for one.",
     body:
@@ -1143,12 +1428,37 @@ const prompts: SanityDoc[] = [
       "predicting any specific person's behaviour.",
     tool: "chatgpt-enterprise",
     tags: ["#Policy", "#Operations"],
-    author: ref(P.harry),
-    createdAt: daysAgo(12, 9),
+    authorId: P.harry,
+    createdDaysAgo: 12,
+    createdHour: 9,
+    upvoteCount: 9,
+    comments: [
+      {
+        label: "kudos-yvonne",
+        by: "yvonne",
+        daysAgo: 10,
+        body: "Good starter — I treated the output as raw material and rewrote about half. The 'neutral wording' line is doing real work; the first version I tried without it had a couple of risks that read like accusations.",
+        upvotes: 12,
+      },
+      {
+        label: "challenge-lina",
+        by: "lina",
+        daysAgo: 7,
+        body: "It will give you 8 plausible-looking risks even when only 4 actually apply. Don't trust the count — let it give as many as it can defend, then trim.",
+        upvotes: 8,
+      },
+      {
+        label: "reply-lina",
+        by: "harry",
+        daysAgo: 6,
+        parent: "challenge-lina",
+        body: "Agreed. v2 of the prompt will say 'between 4 and 10, only ones you can name a concrete trigger for'.",
+        upvotes: 5,
+      },
+    ],
   },
   {
-    _id: "demo-prompt-show-and-tell",
-    _type: "prompt",
+    id: "demo-prompt-show-and-tell",
     title: "Draft 5-minute show & tell from this update log",
     summary: "Turn a bullet log into a runnable script.",
     body:
@@ -1157,13 +1467,45 @@ const prompts: SanityDoc[] = [
       "1 minute on what's next, 30s for one open question for the audience.",
     tool: "claude",
     tags: ["#Communications"],
-    author: ref(P.fern),
-    createdAt: daysAgo(8, 16),
+    authorId: P.fern,
+    createdDaysAgo: 8,
+    createdHour: 16,
     competitionMonth: "2026-04",
+    upvoteCount: 31,
+    comments: [
+      {
+        label: "kudos-emma2",
+        by: "emma",
+        daysAgo: 6,
+        body: "This is the one. I rehearsed straight off the output and only tweaked the open question. Two delivery teams have nicked it from me already.",
+        upvotes: 25,
+      },
+      {
+        label: "challenge-rob",
+        by: "rob",
+        daysAgo: 4,
+        body: "The 30s context section is tight. Worth being explicit about who the audience is — I added 'audience: leaders who haven't seen this project before' and the context paragraph got noticeably better.",
+        upvotes: 13,
+      },
+      {
+        label: "reply-rob",
+        by: "fern",
+        daysAgo: 3,
+        parent: "challenge-rob",
+        body: "Yes — I'll fold the audience hint into the prompt template. Good shout.",
+        upvotes: 7,
+      },
+      {
+        label: "q-priya",
+        by: "priya",
+        daysAgo: 2,
+        body: "Anyone got a version of this for a 15-minute slot? Same structure or do you stretch the user-outcome section?",
+        upvotes: 2,
+      },
+    ],
   },
   {
-    _id: "demo-prompt-bundle-checklist",
-    _type: "prompt",
+    id: "demo-prompt-bundle-checklist",
     title: "Pre-trial bundle review checklist",
     summary: "Reusable checklist for clerks reviewing a Crown Court bundle.",
     body:
@@ -1173,12 +1515,44 @@ const prompts: SanityDoc[] = [
       "considerations. Use plain English.",
     tool: "m365-copilot",
     tags: ["#Operations", "#Legal"],
-    author: ref(P.cara),
-    createdAt: daysAgo(50, 10),
+    authorId: P.cara,
+    createdDaysAgo: 50,
+    createdHour: 10,
+    upvoteCount: 12,
+    comments: [
+      {
+        label: "kudos-natalie",
+        by: "natalie",
+        daysAgo: 45,
+        body: "Used this on a Crown Court bundle last week — the 'redaction completeness' check caught two pages that hadn't been done. Worth its weight.",
+        upvotes: 21,
+      },
+      {
+        label: "q-frank",
+        by: "frank",
+        daysAgo: 38,
+        body: "Have you got a Magistrates' version? The exhibit-reference column doesn't always apply for us.",
+        upvotes: 4,
+      },
+      {
+        label: "reply-frank",
+        by: "cara",
+        daysAgo: 37,
+        parent: "q-frank",
+        body: "Not yet — drop me a line and we'll sketch one. Most of the checklist transfers; it's just the exhibit row that needs swapping.",
+        upvotes: 2,
+      },
+      {
+        label: "challenge-jas",
+        by: "jas",
+        daysAgo: 20,
+        body: "Heads up: 'accessibility considerations' is interpreted as 'PDF tags' by Copilot. If you mean physical-bundle accessibility (font size, paper colour) you need to spell that out.",
+        upvotes: 7,
+      },
+    ],
   },
   {
-    _id: "demo-prompt-listings-explainer",
-    _type: "prompt",
+    id: "demo-prompt-listings-explainer",
     title: "Explain a listings forecast in plain English",
     summary: "User-research-friendly explainer text.",
     body:
@@ -1189,12 +1563,37 @@ const prompts: SanityDoc[] = [
       "without context.",
     tool: "claude",
     tags: ["#Operations", "#Data Analysis"],
-    author: ref(P.alice),
-    createdAt: daysAgo(15, 13),
+    authorId: P.alice,
+    createdDaysAgo: 15,
+    createdHour: 13,
+    upvoteCount: 14,
+    comments: [
+      {
+        label: "kudos-yvonne",
+        by: "yvonne",
+        daysAgo: 12,
+        body: "Listings Officers I tested with said this was the first time they understood the forecast without going back to the analyst. Big unlock.",
+        upvotes: 19,
+      },
+      {
+        label: "q-chuks",
+        by: "chuks",
+        daysAgo: 8,
+        body: "Does the 'avoid percentages without context' rule break if I want a confidence interval? My drafts kept stripping the +/- band.",
+        upvotes: 3,
+      },
+      {
+        label: "reply-chuks",
+        by: "alice",
+        daysAgo: 7,
+        parent: "q-chuks",
+        body: "Yes — for confidence intervals say 'numbers like +/- X are allowed where they describe uncertainty'. The 'no percentages without context' line is really aimed at things like 'down 12%' with no baseline.",
+        upvotes: 6,
+      },
+    ],
   },
   {
-    _id: "demo-prompt-faq-rewrite",
-    _type: "prompt",
+    id: "demo-prompt-faq-rewrite",
     title: "Rewrite an FAQ entry in GDS style",
     summary: "Tightening copy for help-page FAQs.",
     body:
@@ -1203,12 +1602,44 @@ const prompts: SanityDoc[] = [
       "Cap it at 60 words. Keep meaning identical.",
     tool: "claude",
     tags: ["#Communications", "#Policy"],
-    author: ref(P.fern),
-    createdAt: daysAgo(40, 9),
+    authorId: P.fern,
+    createdDaysAgo: 40,
+    createdHour: 9,
+    upvoteCount: 22,
+    comments: [
+      {
+        label: "kudos-lina",
+        by: "lina",
+        daysAgo: 36,
+        body: "I ran twelve FAQs through this in one sitting. Eight came back ready to ship; the other four were 'wrong but obviously wrong' which is fine because that's quicker to fix than a stilted draft.",
+        upvotes: 16,
+      },
+      {
+        label: "challenge-emma",
+        by: "emma",
+        daysAgo: 28,
+        body: "Heads up: 'no marketing language' is interpreted strictly. If your FAQ is about a service that genuinely is faster/cheaper, you'll need to add 'factual claims about service properties are allowed'.",
+        upvotes: 10,
+      },
+      {
+        label: "q-priya",
+        by: "priya",
+        daysAgo: 14,
+        body: "Should we also pin a 'reading age 9' constraint? GDS recommends 9-11 IIRC.",
+        upvotes: 4,
+      },
+      {
+        label: "reply-priya",
+        by: "fern",
+        daysAgo: 13,
+        parent: "q-priya",
+        body: "Good idea — adding that to v2. Reading-age is the better steer than 'no marketing language' on its own.",
+        upvotes: 5,
+      },
+    ],
   },
   {
-    _id: "demo-prompt-meeting-actions",
-    _type: "prompt",
+    id: "demo-prompt-meeting-actions",
     title: "Pull actions out of a Teams transcript",
     summary: "Three-line ask for clean action capture.",
     body:
@@ -1217,10 +1648,53 @@ const prompts: SanityDoc[] = [
       "ambiguous, list it under 'needs clarification' rather than guessing.",
     tool: "m365-copilot",
     tags: ["#Operations"],
-    author: ref(P.gita),
-    createdAt: daysAgo(5, 14),
+    authorId: P.gita,
+    createdDaysAgo: 5,
+    createdHour: 14,
+    upvoteCount: 6,
+    comments: [
+      {
+        label: "kudos-rob",
+        by: "rob",
+        daysAgo: 4,
+        body: "The 'needs clarification' bucket is the killer feature. Every other transcript-summariser I've tried just guesses; this one flags it instead.",
+        upvotes: 17,
+      },
+      {
+        label: "q-natalie",
+        by: "natalie",
+        daysAgo: 0,
+        hoursAgo: 14,
+        body: "Anyone tried this on a transcript with overlapping speakers? Mine had two people commit to the same thing in different ways and the output captured it twice.",
+        upvotes: 1,
+      },
+      {
+        label: "reply-natalie",
+        by: "gita",
+        daysAgo: 0,
+        hoursAgo: 8,
+        parent: "q-natalie",
+        body: "Yes — I add 'deduplicate commitments where the same owner-action pair appears more than once'. Not perfect but cuts the duplicates by ~80%.",
+        upvotes: 3,
+      },
+    ],
   },
 ];
+
+const prompts: SanityDoc[] = promptSeeds.map((seed) => ({
+  _id: seed.id,
+  _type: "prompt",
+  title: seed.title,
+  summary: seed.summary,
+  body: seed.body,
+  tool: seed.tool,
+  tags: seed.tags,
+  author: ref(seed.authorId),
+  createdAt: daysAgo(seed.createdDaysAgo, seed.createdHour),
+  ...(seed.competitionMonth ? { competitionMonth: seed.competitionMonth } : {}),
+  upvotes: buildPromptUpvotes(seed.id, seed.upvoteCount),
+  comments: buildComments(seed.id, seed.comments),
+}));
 
 // ---------------------------------------------------------------------------
 // Events (6) — mix upcoming and recently-past so the page renders.
@@ -1380,6 +1854,7 @@ const ALL_DOCS: SanityDoc[] = [
   ...businessAreas,
   ...capabilities,
   ...people,
+  ...commenterPeople,
   ...actions,
   ...projects,
   ...faqs,
@@ -1430,7 +1905,7 @@ async function main(): Promise<void> {
   // Reference data must land before the documents that reference it. Within
   // each phase we batch into one transaction for atomicity and speed.
   const phases: Array<{ label: string; docs: SanityDoc[] }> = [
-    { label: "reference data", docs: [...groups, ...directorates, ...businessAreas, ...capabilities, ...people, ...actions] },
+    { label: "reference data", docs: [...groups, ...directorates, ...businessAreas, ...capabilities, ...people, ...commenterPeople, ...actions] },
     { label: "projects", docs: projects },
     { label: "content", docs: [...faqs, ...learning, ...prompts, ...events] },
     { label: "audit", docs: changeLog },
