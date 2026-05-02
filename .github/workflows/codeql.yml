@@ -1,9 +1,20 @@
 name: codeql
 
 on:
+  # Push-to-main is intentional — the Security tab is populated from
+  # the default-branch CodeQL run, so the post-merge analysis is the
+  # authoritative one and SHOULD NOT be skipped here (unlike `ci`,
+  # which has nothing useful to do post-merge).
   push:
     branches: [main]
+  # PR analysis flags new vulnerabilities introduced by the change.
+  # Same pull_request shape as `ci.yml` so contributors only have one
+  # PR-trigger pattern to remember.
   pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  # Weekly cron catches drift in CodeQL's own rule set against an
+  # otherwise-quiet codebase.
   schedule:
     - cron: "0 6 * * 1"
 
