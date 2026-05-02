@@ -7,13 +7,20 @@ import { isPreviewEnvironment } from "@/lib/preview-auth/environment";
 
 export const dynamic = "force-dynamic";
 
-async function handlePost(request: Request) {
+async function handlePost() {
   if (!isPreviewEnvironment()) {
     return new NextResponse(null, { status: 404 });
   }
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
-  return NextResponse.redirect(new URL("/preview-auth", request.url));
+  // Relative Location so the browser resolves against the public URL
+  // it actually called. `NextResponse.redirect(new URL(..., request.url))`
+  // leaks the runtime's internal host (e.g. https://localhost:10000 on
+  // Render) when the platform terminates TLS at an upstream proxy.
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: "/preview-auth" },
+  });
 }
 
 function handleGet() {
