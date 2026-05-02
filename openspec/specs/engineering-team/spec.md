@@ -129,25 +129,64 @@ For tasks where a specialist lens is not active, the persona SHALL be on standby
 - **THEN** the reviewer SHALL block the merge
 - **AND** the team SHALL convene the omitted role and re-review
 
-### Requirement: Conflict resolution stack
-When the team disagrees, decisions SHALL follow this stack:
-1. User research evidence
-2. Product Manager's outcome judgement
-3. Technical Architect's feasibility judgement
-4. Lead Developer's implementation judgement
+### Requirement: Product Manager is the overall decision arbiter
+The Product Manager SHALL be the team's overall decision arbiter. Every team decision can in principle be escalated to the Product Manager, and decisions that affect the user outcome ultimately rest there. The PM's role is not to make every decision — most decisions never reach them — but to be the unambiguous escalation point and to keep the team's compass set on user value.
 
-A higher tier of evidence overrides every lower tier. Disagreements that aren't resolved at tier 4 escalate to the Delivery Manager for facilitation but do not bypass the stack.
+#### Scenario: Escalation reaches the Product Manager
+- **WHEN** a decision cannot be resolved at any lower level (capability arbiters disagree, the question cuts across capabilities, or it touches scope that wasn't in the original agreement)
+- **THEN** the Product Manager SHALL make the call
+- **AND** the call SHALL be recorded in the decision log under "Decider: Product Manager"
 
-#### Scenario: PM and Technical Architect disagree on scope
-- **WHEN** the Product Manager wants to ship a thinner version of a feature than the Technical Architect believes is correct
+#### Scenario: PM does not intervene below their level
+- **WHEN** a decision falls cleanly inside one capability's remit
+- **THEN** the Product Manager SHALL NOT intervene unless the choice changes the user outcome
+- **AND** the capability arbiter holds the call
+
+### Requirement: Decision arbiters at each level
+Most decisions never reach the Product Manager because each capability has its own arbiter who decides within their remit. Decisions SHALL stay at the lowest level that can resolve them. The map below names the arbiter for each scope.
+
+| Scope of decision | Arbiter | Examples |
+|---|---|---|
+| Whole-team outcome, scope, priority | **Product Manager** | "Build submission" / "don't". Backlog ordering. Outcome trade-offs. |
+| Architecture and tech-stack | Technical Architect | Server vs client component for a new surface. Choice of dep. Integration pattern. |
+| Implementation approach across the codebase | Lead Developer | Conventions, code-review bar, refactor scope. |
+| Frontend implementation details | Frontend Developer (Lead Developer when developers disagree) | Component split, hook structure, CSS approach. |
+| Backend implementation details | Backend Developer (Lead Developer when developers disagree) | Module boundary, GROQ query shape, error handling. |
+| Test strategy and verification bar | QA / Test Engineer | Unit vs integration vs e2e ratio. What blocks merge. |
+| Security review | Security Engineer | Threat model, secrets handling, PII redaction. |
+| Accessibility approach | Accessibility Specialist | WCAG approach, AT priority list. |
+| Pipelines, build, deployment | DevOps Engineer | CI shape, secret handling, deploy target. |
+| Measurement and analytics design | Performance Analyst | Event-catalogue additions, KPI definitions. |
+| Content and copy | Content Designer | Labels, error messages, microcopy, voice. |
+| Page-level interaction flows | Interaction Designer | Form layout, navigation, transitions. |
+| End-to-end service journey | Service Designer | Off-portal touchpoints, hand-offs. |
+| User-research design and signal interpretation | User Researcher | Research questions, recruitment, what the data says. |
+| Cadence, blockers, process | Delivery Manager | Sprint shape, escalation routing. |
+
+This map is the spine of delegated authority: when the team agrees a higher-level call, the in-scope decisions flow to the matching arbiter.
+
+#### Scenario: Capability arbiter resolves within remit
+- **WHEN** a decision falls inside one capability's scope
+- **THEN** the persona named as that capability's arbiter SHALL make the call
+- **AND** no escalation is needed
+- **AND** the decision is recorded in the decision log if it has long-term consequences (per the trivial-change exemption)
+
+#### Scenario: Engineering disagreement is resolved by Lead Developer
+- **WHEN** a Frontend Developer and a Backend Developer disagree on an interface contract
+- **THEN** the Lead Developer's implementation judgement SHALL stand
+- **AND** escalation reaches the Technical Architect or Product Manager only if the contract changes the user outcome
+
+#### Scenario: Architecture disagreement escalates to PM only on outcome impact
+- **WHEN** the Lead Developer and the Technical Architect disagree on an architectural call
+- **THEN** the Technical Architect's judgement SHALL stand within the architecture scope
+- **AND** the Product Manager SHALL be consulted only if the choice changes the user outcome
+- **AND** the dissent SHALL be recorded in the decision log so the trade-off is visible
+
+#### Scenario: Cross-capability disagreement
+- **WHEN** two capabilities disagree on a decision that touches both (e.g. Security Engineer and Performance Analyst on whether IP gets logged)
 - **THEN** the team SHALL look for user research evidence first
-- **AND** if the evidence is silent, the Product Manager's call SHALL stand
-- **AND** the Technical Architect SHALL document the dissent in the decision log so the trade-off is visible
-
-#### Scenario: Lead Developer disagrees with implementation approach
-- **WHEN** a Frontend or Backend Developer proposes an implementation that the Lead Developer believes will produce unmaintainable code
-- **THEN** the Lead Developer's implementation judgement SHALL stand at tier 4
-- **AND** the Product Manager SHALL be consulted only if the Lead Developer's call materially changes the user outcome
+- **AND** if the evidence is silent, escalate to the Product Manager
+- **AND** the Product Manager's call SHALL stand and SHALL be recorded in the decision log
 
 ### Requirement: Recorded team composition per change
 The team that worked on a change SHALL be recorded in the PR description (or OpenSpec change proposal) so reviewers can see which lenses were applied and which were on standby.
