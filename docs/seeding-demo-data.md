@@ -12,10 +12,16 @@ content covers:
 
 - 4 groups, 6 directorates, 8 business areas, 12 capabilities,
   17 people (8 owners/leads + 9 commenter personas reused on prompts),
-  4 action plan strands
+  4 action plan strands framed around the 2026 priorities (Crown Court
+  outstanding caseload, listing & judicial capacity, pre-trial readiness,
+  digital case-file quality)
 - 12 projects spanning every stage (idea → scan → pilot → scale → stalled →
-  sunset) with realistic Tier 1–3 governance, updates, and survey details
-- 10 FAQs, 5 learning items, 5 events, 5 ChangeLog rows
+  sunset) with realistic Tier 1–3 governance, updates, and survey details.
+  Each project description names the backlog or Leveson-Review-aligned
+  outcome it contributes to.
+- 10 FAQs (5 strategic — backlog framing, Leveson Review, cracked vs
+  ineffective trials — plus 5 practical), 5 learning items, 5 events,
+  5 ChangeLog rows
 - 8 prompts, each with 3–7 comments, ~2 replies (single-level threading
   via `parentKey`), and idempotent per-comment upvote rosters so the
   redesigned card and comments modal both have content the moment the
