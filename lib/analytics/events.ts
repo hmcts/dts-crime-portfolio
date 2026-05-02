@@ -12,7 +12,7 @@
  * exact, additive-only payloads at compile time.
  */
 
-export type DossierOpenedSource = "portfolio" | "galaxy" | "profile" | "direct_link";
+export type DossierOpenedSource = "portfolio" | "profile" | "direct_link";
 
 export type ExportFormat = "excel" | "word" | "pptx";
 
@@ -42,8 +42,6 @@ export interface AnalyticsEventMap {
   prompt_commented: { promptId: string };
   submission_started: { entry: string };
   submission_completed: { projectId: string; calculatedTier: number };
-  galaxy_lens_changed: { lens: string };
-  galaxy_overlay_toggled: { overlay: string; enabled: boolean };
   consent_granted: Record<string, never>;
 }
 
@@ -61,8 +59,6 @@ export const ANALYTICS_EVENT_NAMES: readonly AnalyticsEventName[] = [
   "prompt_commented",
   "submission_started",
   "submission_completed",
-  "galaxy_lens_changed",
-  "galaxy_overlay_toggled",
   "consent_granted",
 ] as const;
 
