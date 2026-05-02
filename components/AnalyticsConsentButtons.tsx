@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   configureAnalytics,
@@ -18,11 +18,22 @@ import { writeConsent } from "@/lib/analytics/consent";
  *   * persists `analyticsConsent: granted` in localStorage + cookie,
  *   * configures the analytics client with the userId/key/proxy mode
  *     supplied by the server-rendered banner,
- *   * fires a single `consent_granted` event with no PII.
+ *   * fires a single `consent_granted` event with no PII,
+ *   * triggers `router.refresh()` so the server-rendered `AnalyticsBanner`
+ *     re-evaluates the now-set cookie and unmounts on its next render.
  *
  * On Decline:
  *   * persists `analyticsConsent: declined`,
- *   * does NOT load any SDK or fire any event.
+ *   * does NOT load any SDK or fire any event,
+ *   * triggers `router.refresh()` so the banner unmounts on the next
+ *     server render.
+ *
+ * The banner element itself (the wrapping <div>) lives in the server
+ * component `AnalyticsBanner`. That component reads the cookie at render
+ * time and returns `null` once a decision is recorded, so the only way to
+ * dismiss the banner without a navigation is to ask Next.js for a fresh
+ * RSC payload — which is exactly what `router.refresh()` does. The cookie
+ * remains the source of truth across navigations.
  */
 
 export interface AnalyticsConsentButtonsProps {
@@ -36,27 +47,70 @@ export interface AnalyticsConsentButtonsProps {
   ingestUrl: string;
 }
 
-export function AnalyticsConsentButtons(props: AnalyticsConsentButtonsProps) {
-  const [hidden, setHidden] = useState(false);
-  const [, startTransition] = useTransition();
+/**
+ * Dependencies the consent handlers need. Extracted so the handlers can be
+ * unit-tested without rendering the component or pulling in the Next.js
+ * router runtime.
+ */
+export interface ConsentHandlerDeps {
+  writeConsent: (value: "granted" | "declined") => void;
+  configureAnalytics: typeof configureAnalytics;
+  track: typeof track;
+  refresh: () => void;
+  config: Pick<
+    AnalyticsConsentButtonsProps,
+    "userId" | "projectKey" | "ingestMode" | "ingestUrl"
+  >;
+}
 
-  if (hidden) return null;
+/**
+ * Accept handler. Persists consent, configures the client, fires the
+ * `consent_granted` event, then asks the App Router to re-render the
+ * server tree so the banner unmounts.
+ */
+export function acceptConsent(deps: ConsentHandlerDeps): void {
+  deps.writeConsent("granted");
+  deps.configureAnalytics({
+    ingestMode: deps.config.ingestMode,
+    ingestUrl: deps.config.ingestUrl,
+    projectKey: deps.config.projectKey,
+    userId: deps.config.userId,
+  });
+  deps.track("consent_granted");
+  deps.refresh();
+}
+
+/**
+ * Decline handler. Persists the decision and asks the App Router to
+ * re-render the server tree so the banner unmounts. No SDK is loaded and
+ * no event is sent.
+ */
+export function declineConsent(deps: ConsentHandlerDeps): void {
+  deps.writeConsent("declined");
+  deps.refresh();
+}
+
+export function AnalyticsConsentButtons(props: AnalyticsConsentButtonsProps) {
+  const router = useRouter();
 
   const onAccept = () => {
-    writeConsent("granted");
-    configureAnalytics({
-      ingestMode: props.ingestMode,
-      ingestUrl: props.ingestUrl,
-      projectKey: props.projectKey,
-      userId: props.userId,
+    acceptConsent({
+      writeConsent,
+      configureAnalytics,
+      track,
+      refresh: () => router.refresh(),
+      config: props,
     });
-    track("consent_granted");
-    startTransition(() => setHidden(true));
   };
 
   const onDecline = () => {
-    writeConsent("declined");
-    startTransition(() => setHidden(true));
+    declineConsent({
+      writeConsent,
+      configureAnalytics,
+      track,
+      refresh: () => router.refresh(),
+      config: props,
+    });
   };
 
   return (
