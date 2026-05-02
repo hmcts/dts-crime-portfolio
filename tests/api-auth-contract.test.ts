@@ -89,7 +89,7 @@ describe("Behavioural: each API route returns 401 when x-user-email is missing",
 
   it("GET /api/portfolios/capabilities returns 401", async () => {
     const { GET } = await import("@/app/api/portfolios/capabilities/route");
-    const response = await GET();
+    const response = await GET(new Request("http://example.com/api/portfolios/capabilities"));
     expect(response.status).toBe(401);
   });
 });

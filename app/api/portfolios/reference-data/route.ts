@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveUser } from "@/lib/auth/resolver";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import {
   fetchReferenceData,
   ReferenceDataFetchError,
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
  * GET /api/portfolios/reference-data
  * Spec: openspec/specs/reference-data/spec.md.
  */
-export async function GET(request: Request) {
+async function handleGet(request: Request) {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -41,3 +42,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withRequestLogging(handleGet);
