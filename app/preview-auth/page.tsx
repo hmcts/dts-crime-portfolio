@@ -1,14 +1,20 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
-import { isValidEmail } from "@/lib/auth/resolver";
-import { recordPreviewSession } from "@/lib/preview-auth/audit";
+import { recordPreviewAuthRejection, recordPreviewSession } from "@/lib/preview-auth/audit";
 import {
   COOKIE_NAME,
   COOKIE_MAX_AGE_SECONDS,
   signCookieValue,
 } from "@/lib/preview-auth/cookie";
+import {
+  ALLOWED_PREVIEW_AUTH_DOMAINS,
+  formatAllowedDomainsForCopy,
+} from "@/lib/preview-auth/email-domain";
 import { isPreviewEnvironment } from "@/lib/preview-auth/environment";
+import { decideSignInAction } from "@/lib/preview-auth/sign-in-decision";
+
+import { SignInForm } from "./sign-in-form";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +23,25 @@ async function signIn(formData: FormData) {
   if (!isPreviewEnvironment()) {
     return;
   }
-  const rawEmail = String(formData.get("email") ?? "").trim();
-  const next = sanitiseNext(String(formData.get("next") ?? "/"));
-  if (!isValidEmail(rawEmail)) {
-    redirect(`/preview-auth?error=invalid&next=${encodeURIComponent(next)}`);
+  const decision = decideSignInAction({
+    rawEmailField: formData.get("email"),
+    rawNextField: formData.get("next"),
+  });
+
+  if (decision.kind === "reject-format") {
+    recordPreviewAuthRejection(decision.rawEmail, "invalid-format");
+    redirect(
+      `/preview-auth?error=invalid&next=${encodeURIComponent(decision.next)}&email=${encodeURIComponent(decision.rawEmail)}`,
+    );
   }
-  const email = rawEmail.toLowerCase();
+  if (decision.kind === "reject-domain") {
+    recordPreviewAuthRejection(decision.rawEmail, "disallowed-domain");
+    redirect(
+      `/preview-auth?error=domain&next=${encodeURIComponent(decision.next)}&email=${encodeURIComponent(decision.rawEmail)}`,
+    );
+  }
+
+  const { email, next } = decision;
   const value = await signCookieValue(email);
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, value, {
@@ -36,22 +55,25 @@ async function signIn(formData: FormData) {
   redirect(next);
 }
 
-function sanitiseNext(value: string): string {
-  // Only allow same-origin paths; never honour a fully qualified URL.
-  if (!value.startsWith("/")) return "/";
-  if (value.startsWith("//")) return "/";
-  return value;
-}
-
 interface PageProps {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; email?: string }>;
 }
 
 export default async function PreviewAuthPage({ searchParams }: PageProps) {
   if (!isPreviewEnvironment()) {
     notFound();
   }
-  const { error, next = "/" } = await searchParams;
+  const { error, next = "/", email: rejectedEmail = "" } = await searchParams;
+
+  const allowedDomainsCopy = formatAllowedDomainsForCopy();
+  const initialError =
+    error === "domain"
+      ? rejectedEmail
+        ? `Sign-in is limited to ${allowedDomainsCopy} emails. The address you entered (${rejectedEmail}) uses a different domain.`
+        : `Sign-in is limited to ${allowedDomainsCopy} emails.`
+      : error === "invalid"
+        ? "Please enter a valid email address."
+        : null;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-8">
@@ -63,29 +85,12 @@ export default async function PreviewAuthPage({ searchParams }: PageProps) {
         Enter the email you want to be identified as. There is no password — this is an
         internal preview, not a production sign-in.
       </p>
-      <form action={signIn} className="mt-6 flex flex-col gap-3">
-        <input type="hidden" name="next" value={next} />
-        <label className="text-sm font-medium text-neutral-700" htmlFor="email">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
-        />
-        {error === "invalid" && (
-          <p className="text-sm text-red-700">Please enter a valid email address.</p>
-        )}
-        <button
-          type="submit"
-          className="mt-2 rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-        >
-          Continue
-        </button>
-      </form>
+      <SignInForm
+        action={signIn}
+        next={next}
+        initialError={initialError}
+        allowedDomains={[...ALLOWED_PREVIEW_AUTH_DOMAINS]}
+      />
     </main>
   );
 }

@@ -21,7 +21,7 @@ export async function signIn(
     next?: string;
   } = {},
 ): Promise<void> {
-  const email = options.email ?? "tester@example.com";
+  const email = options.email ?? "tester@hmcts.net";
   const next = options.next ?? "/portfolio";
 
   await page.goto(`/preview-auth?next=${encodeURIComponent(next)}`);

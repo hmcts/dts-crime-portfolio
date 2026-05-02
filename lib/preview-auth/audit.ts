@@ -1,5 +1,6 @@
 import "server-only";
 
+import { logger } from "@/lib/logging/logger";
 import { getSanityClient } from "@/lib/sanity/client";
 
 /**
@@ -27,4 +28,31 @@ export async function recordPreviewSession(email: string): Promise<void> {
       lastSeenAt: now,
     });
   }
+}
+
+export type PreviewAuthRejectionReason = "invalid-format" | "disallowed-domain";
+
+/**
+ * Log a rejected sign-in attempt. Only the *domain* part of the rejected
+ * email and the rejection reason are logged — never the local-part — so
+ * the audit trail does not leak personal email handles for non-staff
+ * visitors.
+ *
+ * For empty / malformed inputs with no recoverable domain, `domain` is
+ * recorded as `null`.
+ */
+export function recordPreviewAuthRejection(
+  rawEmail: string,
+  reason: PreviewAuthRejectionReason,
+): void {
+  const trimmed = rawEmail.trim();
+  const atIndex = trimmed.lastIndexOf("@");
+  const domain =
+    atIndex > 0 && atIndex < trimmed.length - 1 ? trimmed.slice(atIndex + 1).toLowerCase() : null;
+
+  logger.warn("preview_auth.rejected_domain", {
+    event_kind: "preview_auth_reject",
+    reason,
+    domain,
+  });
 }

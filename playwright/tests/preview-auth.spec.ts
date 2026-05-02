@@ -9,6 +9,11 @@ import { installBaselineMocks } from "../fixtures/sign-in";
  *  - submit a form-allowed email
  *  - assert redirect into the app and that the signed cookie is set
  *  - navigate to a protected route and assert no re-prompt
+ *
+ * Plus a second test covering the domain restriction added in
+ * `restrict-preview-auth-to-hmcts-domains`: a non-HMCTS / non-justice
+ * email is rejected with an inline error and the page does not
+ * navigate.
  */
 test("preview-auth flow: sign in, set cookie, navigate to a protected route without re-prompt", async ({
   page,
@@ -25,9 +30,9 @@ test("preview-auth flow: sign in, set cookie, navigate to a protected route with
   await expect(page).toHaveURL(/\/preview-auth\?next=%2Fportfolio/);
   await expect(page.getByRole("heading", { name: "Sign in to the preview" })).toBeVisible();
 
-  // 2. Submit a valid email; the server action signs a cookie and redirects
-  // to `next`.
-  await page.getByLabel("Email").fill("tester@example.com");
+  // 2. Submit a valid HMCTS email; the server action signs a cookie and
+  // redirects to `next`.
+  await page.getByLabel("Email").fill("tester@hmcts.net");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.waitForURL((url) => url.pathname === "/portfolio");
 
@@ -43,4 +48,34 @@ test("preview-auth flow: sign in, set cookie, navigate to a protected route with
   await page.goto("/help");
   await expect(page).toHaveURL(/\/help$/);
   await expect(page.getByRole("heading", { name: "Help", level: 1 })).toBeVisible();
+});
+
+test("preview-auth: rejected non-HMCTS email shows inline error and does not navigate", async ({
+  page,
+  context,
+}) => {
+  await installBaselineMocks(page);
+
+  await page.goto("/preview-auth?next=%2Fportfolio");
+  await expect(page.getByRole("heading", { name: "Sign in to the preview" })).toBeVisible();
+
+  // Use a domain that is not on the allowlist. The client component
+  // intercepts on submit and shows an inline error before any network
+  // call. The form still has `noValidate` so submission is reached.
+  await page.getByLabel("Email").fill("tester@example.com");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  // We are still on the sign-in page — no navigation occurred.
+  await expect(page).toHaveURL(/\/preview-auth/);
+  await expect(page.getByRole("heading", { name: "Sign in to the preview" })).toBeVisible();
+
+  // Inline error names the allowed domains.
+  const error = page.getByRole("alert");
+  await expect(error).toBeVisible();
+  await expect(error).toContainText("@hmcts.net");
+  await expect(error).toContainText("@justice.gov.uk");
+
+  // No previewAuth cookie was set.
+  const cookies = await context.cookies();
+  expect(cookies.find((cookie) => cookie.name === "previewAuth")).toBeUndefined();
 });
