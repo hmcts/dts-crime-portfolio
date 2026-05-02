@@ -34,9 +34,15 @@ test("sign-out flow: clears cookie, lands on /preview-auth, re-prompts on next p
   let cookies = await context.cookies();
   expect(cookies.find((cookie) => cookie.name === "previewAuth")).toBeTruthy();
 
-  // The PreviewBanner is rendered on every page in non-production
-  // environments and contains the sign-out form. Click its button.
-  await page.getByRole("button", { name: "Sign out" }).click();
+  // Two sign-out controls render on this page: one in the
+  // PreviewBanner (non-prod-only orange strip) and one in the AppHeader
+  // (top-right, on every authenticated page). They post to the same
+  // route. Scope to the banner's copy via testid so this assertion is
+  // unambiguous under strict mode.
+  await page
+    .getByTestId("preview-banner")
+    .getByRole("button", { name: "Sign out" })
+    .click();
 
   // The redirect MUST land on /preview-auth on the same origin we
   // started from. If the route handler ever regresses to constructing
