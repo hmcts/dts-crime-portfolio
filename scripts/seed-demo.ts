@@ -1082,19 +1082,6 @@ const learning: SanityDoc[] = [
     level: "beginner",
   },
   {
-    _id: "demo-learning-galaxy-explained",
-    _type: "learningItem",
-    type: "guide",
-    title: "Galaxy view explained",
-    body: portableText(
-      "Galaxy is a high-density visual of every project as a star. Colour is stage, size is reach, position is grouped by directorate.",
-      "Use it to spot clusters, gaps, and outliers at a glance — drill into a star to open its dossier.",
-    ),
-    tags: ["galaxy", "navigation"],
-    readingTimeMinutes: 4,
-    level: "intermediate",
-  },
-  {
     _id: "demo-learning-action-plan-reading",
     _type: "learningItem",
     type: "guide",
@@ -1281,17 +1268,6 @@ const eventInputs: EventInput[] = [
     durationHours: 1,
     body: [
       "30 minutes on what's changed in the 10-question tiering assessment, plus a Q&A.",
-    ],
-  },
-  {
-    id: "demo-event-galaxy-demo",
-    title: "Galaxy view demo",
-    category: "Show & Tell",
-    location: "Online (Teams)",
-    startsDays: 26,
-    durationHours: 1,
-    body: [
-      "Live walk-through of the Galaxy view: how to read it, when it helps, when the table view is better.",
     ],
   },
   {
