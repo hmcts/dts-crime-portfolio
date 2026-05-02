@@ -332,7 +332,11 @@ describe("POST /api/prompts/[id]/upvote", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ count: 1, hasUpvote: true });
+    const json = (await response.json()) as { count: number; voted: boolean };
+    expect(json).toEqual({ count: 1, voted: true });
+    // Regression: response shape MUST carry `voted` so the client can
+    // sync its toggle state to the server's truth.
+    expect(typeof json.voted).toBe("boolean");
 
     expect(sanityClientMock.transaction.patch).toHaveBeenCalledOnce();
     const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
@@ -372,7 +376,9 @@ describe("POST /api/prompts/[id]/upvote", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ count: 1, hasUpvote: false });
+    const offJson = (await response.json()) as { count: number; voted: boolean };
+    expect(offJson).toEqual({ count: 1, voted: false });
+    expect(typeof offJson.voted).toBe("boolean");
 
     const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
       string,
@@ -380,6 +386,43 @@ describe("POST /api/prompts/[id]/upvote", () => {
     ];
     expect(patchCall[1].set.upvotes).toHaveLength(1);
     expect(patchCall[1].set.upvotes[0]!.userEmail).toBe("other@hmcts.net");
+  });
+
+  // Regression for PM defect #2 — the client needs `voted: boolean` in
+  // the response so it can sync its local toggle state to the server's
+  // truth in a single round-trip. This test asserts the field is
+  // present and has the expected shape on BOTH transitions.
+  it("response carries voted: boolean reflecting the post-toggle state", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    // Empty -> add. `voted` should be `true`.
+    sanityClientMock.client.fetch.mockResolvedValueOnce({ _id: "p1", upvotes: [] });
+    const onResp = await upvotePromptRoute(
+      makeJsonRequest("http://localhost/api/prompts/p1/upvote", {}),
+      makeIdContext("p1"),
+    );
+    const onJson = (await onResp.json()) as { count: number; voted: boolean };
+    expect(onJson).toHaveProperty("voted");
+    expect(typeof onJson.voted).toBe("boolean");
+    expect(onJson.voted).toBe(true);
+
+    // Already present -> remove. `voted` should be `false`.
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      upvotes: [{ _key: "k1", userEmail: "viewer@hmcts.net", createdAt: "2025-01-01T00:00:00Z" }],
+    });
+    const offResp = await upvotePromptRoute(
+      makeJsonRequest("http://localhost/api/prompts/p1/upvote", {}),
+      makeIdContext("p1"),
+    );
+    const offJson = (await offResp.json()) as { count: number; voted: boolean };
+    expect(offJson).toHaveProperty("voted");
+    expect(typeof offJson.voted).toBe("boolean");
+    expect(offJson.voted).toBe(false);
   });
 
   it("is idempotent — toggling on then off leaves the array as it started", async () => {
@@ -787,7 +830,11 @@ describe("POST /api/prompts/[id]/comments/[commentKey]/upvote", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ count: 1, hasUpvote: true });
+    const json = (await response.json()) as { count: number; voted: boolean };
+    expect(json).toEqual({ count: 1, voted: true });
+    // Regression: response shape MUST carry `voted` so the client can
+    // sync its toggle state to the server's truth.
+    expect(typeof json.voted).toBe("boolean");
 
     const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
       string,
@@ -835,7 +882,9 @@ describe("POST /api/prompts/[id]/comments/[commentKey]/upvote", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ count: 1, hasUpvote: false });
+    const offJson = (await response.json()) as { count: number; voted: boolean };
+    expect(offJson).toEqual({ count: 1, voted: false });
+    expect(typeof offJson.voted).toBe("boolean");
 
     const patchCall = sanityClientMock.transaction.patch.mock.calls[0] as [
       string,
@@ -898,5 +947,61 @@ describe("POST /api/prompts/[id]/comments/[commentKey]/upvote", () => {
     // The target comment has the new upvote.
     expect(k1.upvotes).toHaveLength(1);
     expect(k1.upvotes![0]!.userEmail).toBe("viewer@hmcts.net");
+  });
+
+  // Regression for PM defect #2 — comment-level upvotes need the same
+  // `voted: boolean` in the response so the per-comment toggle inside
+  // the modal can sync its local state to the server's truth.
+  it("response carries voted: boolean reflecting the post-toggle state", async () => {
+    resolveUserMock.mockResolvedValue({
+      kind: "authorized",
+      email: "viewer@hmcts.net",
+      isAdmin: false,
+      editableProjects: [],
+    });
+    // Empty -> add. `voted` should be `true`.
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        {
+          _key: "k0",
+          userEmail: "author@hmcts.net",
+          body: "first",
+          createdAt: "2025-01-01T00:00:00Z",
+        },
+      ],
+    });
+    const onResp = await commentUpvoteRoute(
+      new Request("http://localhost/api/prompts/p1/comments/k0/upvote", { method: "POST" }),
+      makeCommentContext("p1", "k0"),
+    );
+    const onJson = (await onResp.json()) as { count: number; voted: boolean };
+    expect(onJson).toHaveProperty("voted");
+    expect(typeof onJson.voted).toBe("boolean");
+    expect(onJson.voted).toBe(true);
+
+    // Already present -> remove. `voted` should be `false`.
+    sanityClientMock.client.fetch.mockResolvedValueOnce({
+      _id: "p1",
+      comments: [
+        {
+          _key: "k0",
+          userEmail: "author@hmcts.net",
+          body: "first",
+          createdAt: "2025-01-01T00:00:00Z",
+          upvotes: [
+            { _key: "u1", userEmail: "viewer@hmcts.net", createdAt: "2025-01-02T00:00:00Z" },
+          ],
+        },
+      ],
+    });
+    const offResp = await commentUpvoteRoute(
+      new Request("http://localhost/api/prompts/p1/comments/k0/upvote", { method: "POST" }),
+      makeCommentContext("p1", "k0"),
+    );
+    const offJson = (await offResp.json()) as { count: number; voted: boolean };
+    expect(offJson).toHaveProperty("voted");
+    expect(typeof offJson.voted).toBe("boolean");
+    expect(offJson.voted).toBe(false);
   });
 });

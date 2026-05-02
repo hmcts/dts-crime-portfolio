@@ -110,11 +110,25 @@ export function PromptCard({ prompt }: { prompt: PromptListItem }) {
         </div>
       )}
 
-      <div className="relative mt-3 rounded-xl bg-neutral-50 p-4">
+      {/* Clickable prompt body. Wrapping the tinted box in a `<button>`
+          gives keyboard activation (Enter / Space) and a real focus ring
+          for free; the `cursor-pointer` plus a hover tint communicate
+          the affordance visually. The Copy overlay button stops its
+          click from bubbling so it can still copy without launching the
+          modal. The card title, byline, tags, and footer are NOT inside
+          this button — clicking those areas does not open the modal. */}
+      <button
+        type="button"
+        onClick={() => setModalOpen(true)}
+        aria-label="Open comments"
+        data-testid="prompt-body-button"
+        className="group relative mt-3 block w-full cursor-pointer rounded-xl bg-neutral-50 p-4 text-left hover:bg-neutral-100"
+      >
         <div className="absolute right-3 top-3">
           <CopyButton
             value={prompt.body}
             label="Copy prompt"
+            variant="icon"
             className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/80 text-neutral-600 hover:bg-white hover:text-neutral-900"
           />
         </div>
@@ -124,11 +138,15 @@ export function PromptCard({ prompt }: { prompt: PromptListItem }) {
         <pre className="mt-2 max-h-32 overflow-hidden whitespace-pre-wrap font-mono text-xs leading-relaxed text-neutral-800">
           {truncateForCard(prompt.body)}
         </pre>
-      </div>
+      </button>
 
       <footer className="mt-4 flex items-center justify-between gap-2 border-t border-neutral-100 pt-4 text-xs text-neutral-700">
         <div className="flex items-center gap-2">
-          <UpvoteButton promptId={prompt._id} initialCount={prompt.upvoteCount} />
+          <UpvoteButton
+            promptId={prompt._id}
+            initialCount={prompt.upvoteCount}
+            initialVoted={prompt.hasUserUpvoted}
+          />
           <button
             type="button"
             onClick={() => setModalOpen(true)}

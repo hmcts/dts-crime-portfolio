@@ -94,7 +94,11 @@ async function handlePost(_request: Request, context: RouteContext): Promise<Res
     client,
   });
 
-  return NextResponse.json({ count: after.length, hasUpvote: !alreadyUpvoted });
+  // `voted` reflects the caller's status AFTER the toggle so the client
+  // can sync its local "I have voted" indicator to the server's truth in
+  // a single round-trip. Spec: openspec/specs/prompts-library/spec.md
+  // (Idempotent upvotes).
+  return NextResponse.json({ count: after.length, voted: !alreadyUpvoted });
 }
 
 export const POST = withRequestLogging(handlePost);

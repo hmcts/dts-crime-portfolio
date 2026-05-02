@@ -43,6 +43,7 @@ const SEEDED_PROMPT = {
   authorName: "Nigel Mayer",
   authorSeed: "person-nigel-mayer",
   upvoteCount: 85,
+  hasUserUpvoted: false,
   commentCount: 2,
   comments: [
     {
@@ -52,6 +53,7 @@ const SEEDED_PROMPT = {
       body: "This is brilliant; I wish I had seen this a few weeks ago when I returned from leave. Will definitely be trying it out next time round.",
       createdAt: "2026-01-01T09:00:00.000Z",
       upvoteCount: 1,
+      hasUserUpvoted: false,
       parentKey: null,
     },
     {
@@ -61,6 +63,7 @@ const SEEDED_PROMPT = {
       body: "This would be great when we have licences. Without one you could workaround by copy/pasting every email into a word document and ask it to do similar – but if you have hundreds of emails it's a little more challenging at this stage.",
       createdAt: "2026-02-01T09:00:00.000Z",
       upvoteCount: 10,
+      hasUserUpvoted: false,
       parentKey: null,
     },
   ],
@@ -138,6 +141,160 @@ test("prompts modal: open from card, post a comment, upvote a comment", async ({
   // Close via the X button.
   await modal.getByRole("button", { name: "Close" }).first().click();
   await expect(modal).toBeHidden();
+});
+
+/**
+ * Regression for PM defect "the vote button should only allow for the
+ * user to vote once or if they click again it takes away their vote."
+ *
+ * Drives the prompt-level upvote toggle through both transitions —
+ * unvoted -> voted (count + 1, `aria-pressed=true`) and voted ->
+ * unvoted (count back to seed, `aria-pressed=false`). After a reload
+ * the button reflects the seeded `hasUserUpvoted: true` (the user is
+ * back in the upvote roster), proving the projection threads the
+ * authoritative voted state through to the client on first paint.
+ */
+test("vote button toggles and remembers across reload", async ({ page }) => {
+  // Sanity mocks: the prompts list (page render) plus the upvote
+  // endpoint's prompt-fetch (`_id == $id`). The fetch starts with an
+  // empty upvotes array on click 1; on click 2 the mock layer returns
+  // an array containing the caller so the route's idempotent toggle
+  // removes them. We stub each call separately because the Sanity
+  // mock's "match-by-fragment" is keyed on the query — it returns the
+  // same response for every matching call within a fixture set.
+  await installBaselineMocks(page, [
+    {
+      fragment: '_type == "prompt" && _id == $id',
+      result: { _id: SEEDED_PROMPT._id, upvotes: [] },
+    },
+    { fragment: PROMPTS_LIST_FRAGMENT, result: [SEEDED_PROMPT] },
+  ]);
+  await signIn(page, { next: "/prompts" });
+  await page.waitForURL((url) => url.pathname === "/prompts");
+
+  const upvote = page.getByTestId("prompt-upvote-button");
+  await expect(upvote).toHaveAttribute("aria-pressed", "false");
+
+  // Click 1 — unvoted -> voted. The aria-pressed state and palette
+  // flip; the count is supplied by the server (the mock has the
+  // caller absent so the post-toggle `count` is 1).
+  await upvote.click();
+  await expect(upvote).toHaveAttribute("aria-pressed", "true");
+  await expect(upvote).toContainText(/\d+/);
+
+  // Swap the upvote-route mock to one where the caller is already
+  // present, so the next click removes them and the route returns
+  // `voted: false`.
+  await installBaselineMocks(page, [
+    {
+      fragment: '_type == "prompt" && _id == $id',
+      result: {
+        _id: SEEDED_PROMPT._id,
+        upvotes: [
+          { _key: "u-tester", userEmail: "tester@hmcts.net", createdAt: "2026-01-01T00:00:00Z" },
+        ],
+      },
+    },
+    {
+      fragment: PROMPTS_LIST_FRAGMENT,
+      result: [{ ...SEEDED_PROMPT, hasUserUpvoted: true }],
+    },
+  ]);
+
+  // Click 2 — voted -> unvoted. `aria-pressed` flips back to `false`.
+  await upvote.click();
+  await expect(upvote).toHaveAttribute("aria-pressed", "false");
+
+  // Reload: now the listing projects `hasUserUpvoted: true` (the user
+  // is in the roster), and the button paints voted on first render —
+  // no click required. This is the "remember across reload" half of
+  // the regression.
+  await page.reload();
+  await page.waitForURL((url) => url.pathname === "/prompts");
+  const persisted = page.getByTestId("prompt-upvote-button");
+  await expect(persisted).toHaveAttribute("aria-pressed", "true");
+});
+
+/**
+ * Regression for PM defect "clicking on the prompt should also launch
+ * the pop up." The clickable area is the tinted prompt-body box only —
+ * not the footer, not the tags, not the title. ESC-to-close should
+ * still work via the native `<dialog>` cancel handler.
+ */
+test("clicking prompt body opens modal", async ({ page }) => {
+  await installBaselineMocks(page, [
+    {
+      fragment: PROMPT_FETCH_FRAGMENT,
+      result: {
+        _id: SEEDED_PROMPT._id,
+        comments: SEEDED_PROMPT.comments.map((entry) => ({
+          _key: entry._key,
+          userEmail: "seed@hmcts.net",
+          body: entry.body,
+          createdAt: entry.createdAt,
+          parentKey: entry.parentKey ?? undefined,
+        })),
+      },
+    },
+    { fragment: PROMPTS_LIST_FRAGMENT, result: [SEEDED_PROMPT] },
+  ]);
+  await signIn(page, { next: "/prompts" });
+  await page.waitForURL((url) => url.pathname === "/prompts");
+
+  // The prompt-body button carries a stable `data-testid` so the test
+  // doesn't fight with the comment-indicator buttons that share a
+  // similar accessible name.
+  await page.getByTestId("prompt-body-button").click();
+  const modal = page.getByRole("dialog", { name: /Comments/ });
+  await expect(modal).toBeVisible();
+
+  // ESC closes via the dialog's `cancel` event — already wired up.
+  await page.keyboard.press("Escape");
+  await expect(modal).toBeHidden();
+});
+
+/**
+ * Regression for PM defect "clicking on comments should render the pop
+ * up in the middle of the screen." Asserts the dialog's bounding rect
+ * is centred within the viewport on both axes within ±2px tolerance.
+ */
+test("modal is centered", async ({ page }) => {
+  await installBaselineMocks(page, [
+    {
+      fragment: PROMPT_FETCH_FRAGMENT,
+      result: {
+        _id: SEEDED_PROMPT._id,
+        comments: SEEDED_PROMPT.comments.map((entry) => ({
+          _key: entry._key,
+          userEmail: "seed@hmcts.net",
+          body: entry.body,
+          createdAt: entry.createdAt,
+          parentKey: entry.parentKey ?? undefined,
+        })),
+      },
+    },
+    { fragment: PROMPTS_LIST_FRAGMENT, result: [SEEDED_PROMPT] },
+  ]);
+  await signIn(page, { next: "/prompts" });
+  await page.waitForURL((url) => url.pathname === "/prompts");
+
+  await page.getByTestId("prompt-body-button").click();
+  const modal = page.getByRole("dialog", { name: /Comments/ });
+  await expect(modal).toBeVisible();
+
+  // Read the dialog's bounding rect and the viewport size, then assert
+  // the dialog's centre matches the viewport's centre on both axes.
+  const offsets = await modal.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return {
+      cx: rect.left + rect.width / 2,
+      cy: rect.top + rect.height / 2,
+      vw: window.innerWidth,
+      vh: window.innerHeight,
+    };
+  });
+  expect(Math.abs(offsets.cx - offsets.vw / 2)).toBeLessThanOrEqual(2);
+  expect(Math.abs(offsets.cy - offsets.vh / 2)).toBeLessThanOrEqual(2);
 });
 
 test("prompts modal: reply control opens an inline reply form under a parent comment", async ({

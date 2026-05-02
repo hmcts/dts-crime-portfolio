@@ -114,6 +114,7 @@ export function CommentForm({
             authorName: null,
             authorSeed: null,
             upvoteCount: 0,
+            hasUserUpvoted: false,
           },
           data.count,
         );

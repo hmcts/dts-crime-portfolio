@@ -17,6 +17,12 @@ import type { PromptListItem } from "./types";
  * comment-author email is never selected and so cannot reach the
  * client, in line with the privacy requirement in the spec delta.
  *
+ * `hasUserUpvoted` is derived from the calling user's email (threaded
+ * through as `$userEmail`) being present in the `upvotes[]` array. For
+ * unauthorized callers the parameter is `null` and the predicate
+ * resolves to `false` for every prompt and comment — no leakage of the
+ * upvote roster, just a stable "false" baseline.
+ *
  * Tag and tool filters are empty-safe (`count(...) == 0` short-circuits)
  * so the same query handles "no filters" and any subset.
  *
@@ -37,6 +43,7 @@ export const PROMPTS_LIST_QUERY = /* groq */ `
     "authorName": author->name,
     "authorSeed": author->_id,
     "upvoteCount": count(upvotes),
+    "hasUserUpvoted": $userEmail != null && count(upvotes[userEmail == $userEmail]) > 0,
     "commentCount": count(comments),
     "comments": coalesce(comments[]{
       _key,
@@ -45,16 +52,21 @@ export const PROMPTS_LIST_QUERY = /* groq */ `
       parentKey,
       "authorName": *[_type == "person" && email == ^.userEmail][0].name,
       "authorSeed": *[_type == "person" && email == ^.userEmail][0]._id,
-      "upvoteCount": count(upvotes)
+      "upvoteCount": count(upvotes),
+      "hasUserUpvoted": $userEmail != null && count(upvotes[userEmail == $userEmail]) > 0
     }, []) | order(coalesce(createdAt, "") asc),
     competitionMonth
   }
 `;
 
-export async function fetchPrompts(filters: PromptFilters): Promise<PromptListItem[]> {
+export async function fetchPrompts(
+  filters: PromptFilters,
+  userEmail: string | null,
+): Promise<PromptListItem[]> {
   const client = getSanityClient();
   return client.fetch<PromptListItem[]>(PROMPTS_LIST_QUERY, {
     tags: filters.tags,
     tool: filters.tool ?? "",
+    userEmail,
   });
 }
