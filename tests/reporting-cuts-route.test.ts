@@ -51,6 +51,12 @@ function makeRequest(body?: unknown): Request {
   });
 }
 
+function makeGetRequest(): Request {
+  return new Request("http://localhost/api/portfolios/reporting-cuts", {
+    method: "GET",
+  });
+}
+
 describe("GET /api/portfolios/reporting-cuts", () => {
   beforeEach(() => {
     resolveUserMock.mockReset();
@@ -66,7 +72,7 @@ describe("GET /api/portfolios/reporting-cuts", () => {
       kind: "unauthorized",
       reason: "missing-header",
     });
-    const response = await GET();
+    const response = await GET(makeGetRequest());
     expect(response.status).toBe(401);
     expect(sanityClientMock.client.fetch).not.toHaveBeenCalled();
   });
@@ -87,7 +93,7 @@ describe("GET /api/portfolios/reporting-cuts", () => {
         createdBy: "admin@hmcts.net",
       },
     ]);
-    const response = await GET();
+    const response = await GET(makeGetRequest());
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual({

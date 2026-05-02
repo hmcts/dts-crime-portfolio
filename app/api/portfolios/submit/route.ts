@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import type { PortableTextBlock } from "@portabletext/types";
 
 import { resolveUser } from "@/lib/auth/resolver";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import { getSanityClient } from "@/lib/sanity/client";
 import {
   commitWithChangeLog,
@@ -59,7 +60,7 @@ function ref(id: string, withKey = false): SanityRef {
  * openspec/specs/access-control/spec.md,
  * openspec/specs/change-tracking/spec.md.
  */
-export async function POST(request: Request): Promise<Response> {
+async function handlePost(request: Request): Promise<Response> {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -167,6 +168,8 @@ export async function POST(request: Request): Promise<Response> {
 
   return NextResponse.json({ ok: true, projectId });
 }
+
+export const POST = withRequestLogging(handlePost);
 
 interface ProjectDocArgs {
   projectId: string;

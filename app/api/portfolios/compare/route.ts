@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { resolveUser } from "@/lib/auth/resolver";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import { getSanityClient } from "@/lib/sanity/client";
 import {
   diffFromChangeLog,
@@ -59,7 +60,7 @@ const REPORTING_CUT_QUERY = /* groq */ `
  *
  * Spec: openspec/specs/compare-mode/spec.md, openspec/specs/change-tracking/spec.md.
  */
-export async function GET(request: Request): Promise<Response> {
+async function handleGet(request: Request): Promise<Response> {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -135,6 +136,8 @@ export async function GET(request: Request): Promise<Response> {
   const result = diffFromChangeLog(rows ?? [], projectNames);
   return NextResponse.json(result);
 }
+
+export const GET = withRequestLogging(handleGet);
 
 function normaliseDate(input: string, edge: "start" | "end"): string | null {
   // Accept either a bare YYYY-MM-DD or a full ISO timestamp. Bare dates are

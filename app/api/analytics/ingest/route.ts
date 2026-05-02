@@ -4,6 +4,7 @@ import {
   CONSENT_COOKIE_NAME,
   readConsentFromCookieHeader,
 } from "@/lib/analytics/consent";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 
 /**
  * Same-origin analytics ingest proxy.
@@ -40,7 +41,7 @@ function noStoreNoContent(): NextResponse {
   return response;
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
+async function handlePost(request: Request): Promise<NextResponse> {
   const cookieHeader = request.headers.get("cookie");
   const consent = readConsentFromCookieHeader(cookieHeader);
   if (consent !== "granted") {
@@ -105,3 +106,5 @@ export async function POST(request: Request): Promise<NextResponse> {
   response.headers.set("Cache-Control", "no-store");
   return response;
 }
+
+export const POST = withRequestLogging(handlePost);

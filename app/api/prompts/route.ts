@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { resolveUser } from "@/lib/auth/resolver";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import { getSanityClient } from "@/lib/sanity/client";
 import {
   commitWithChangeLog,
@@ -38,7 +39,7 @@ const PERSON_BY_EMAIL_QUERY = /* groq */ `
  * Spec: openspec/specs/prompts-library/spec.md (Prompt creation),
  * openspec/specs/access-control/spec.md, openspec/specs/change-tracking/spec.md.
  */
-export async function POST(request: Request): Promise<Response> {
+async function handlePost(request: Request): Promise<Response> {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -157,3 +158,5 @@ export async function POST(request: Request): Promise<Response> {
 
   return NextResponse.json({ id: promptId }, { status: 201 });
 }
+
+export const POST = withRequestLogging(handlePost);

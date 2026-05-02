@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { resolveUser } from "@/lib/auth/resolver";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import { getSanityClient } from "@/lib/sanity/client";
 import { commitWithChangeLog } from "@/lib/sanity/transaction";
 import { serializePortfolioForSnapshot } from "@/lib/reporting-cuts/serialize";
@@ -39,7 +40,7 @@ const LIST_QUERY = /* groq */ `
  * Spec: openspec/specs/compare-mode/spec.md (Reporting cut management,
  * Snapshots capture resolved text), openspec/specs/change-tracking/spec.md.
  */
-export async function GET(): Promise<Response> {
+async function handleGet(_request: Request): Promise<Response> {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -60,7 +61,7 @@ export async function GET(): Promise<Response> {
   return NextResponse.json({ cuts });
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function handlePost(request: Request): Promise<Response> {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -133,3 +134,6 @@ export async function POST(request: Request): Promise<Response> {
 
   return NextResponse.json({ id: newId, createdAt }, { status: 201 });
 }
+
+export const GET = withRequestLogging(handleGet);
+export const POST = withRequestLogging(handlePost);
