@@ -24,6 +24,35 @@ Two principles to internalise:
 When dispatching agents, name the personas active on the change and record
 them in the PR description.
 
+### Skills per persona
+
+When acting as a persona, reach for these Claude skills / tools first. The
+spec stays runtime-agnostic; this list is the Claude-specific cheat sheet
+and may go stale — if you find a better tool for the job, update this table
+in the same PR that uses it.
+
+| Persona | Reach for |
+|---|---|
+| **Product Manager** | `superpowers:brainstorming` (challenge scope, surface non-technology alternatives); `WebSearch` / `WebFetch` (existing GDS / gov.uk services, Service Standard) |
+| **Delivery Manager** | `superpowers:writing-plans`; `schedule` (recurring follow-ups); the `Plan` agent (laying out the work) |
+| **User Researcher** | `WebFetch` (gov.uk research patterns, existing user research); the `Plan` agent for research-design notes |
+| **Service Designer / Interaction Designer / Content Designer** | `WebFetch` (gov.uk content + design patterns, GDS Design System); `superpowers:brainstorming` for journey mapping and flow proposals |
+| **Technical Architect** | `superpowers:writing-plans`; the `Plan` agent; the `openspec` slash commands when a proposal affects a capability spec |
+| **Lead Developer** | `superpowers:code-reviewer` (subagent type); `superpowers:simplify`; `superpowers:verification-before-completion`; `superpowers:requesting-code-review` and `superpowers:receiving-code-review` |
+| **Frontend Developer / Backend Developer** | `superpowers:test-driven-development`; `superpowers:simplify`; the `Explore` agent for fast codebase searches |
+| **DevOps Engineer** | `update-config` (settings.json); `fewer-permission-prompts`; `loop` / `schedule` for recurring jobs |
+| **QA / Test Engineer** | `superpowers:test-driven-development`; `superpowers:verification-before-completion`; `superpowers:systematic-debugging`; the `Explore` agent |
+| **Performance Analyst** | `WebSearch` / `WebFetch` for benchmarks and analytics references; the `Explore` agent for instrumentation surveys |
+| **Security Engineer** | `security-review` skill; `superpowers:code-reviewer` with a security framing |
+| **Accessibility Specialist** | `WebFetch` for WCAG 2.2 / GDS accessibility patterns; `superpowers:code-reviewer` with an a11y framing |
+
+Cross-cutting (any persona):
+
+- `superpowers:using-superpowers` — the meta-skill that ensures persona-specific skills get invoked
+- `superpowers:dispatching-parallel-agents` and `superpowers:using-git-worktrees` — for the team-of-agents working pattern itself
+- The `Explore` agent — fast, read-only codebase search for any persona
+- `openspec` slash commands (`/opsx:new`, `/opsx:apply`, `/opsx:archive`, etc.) — for the spec workflow when a change affects a capability spec
+
 ## Reading the spec
 
 - `openspec list --specs` — list every capability
