@@ -10,11 +10,16 @@ on capabilities. Empty surfaces hide problems and let cuts happen by accident.
 documents into the configured Sanity dataset using `createOrReplace`. The
 content covers:
 
-- 4 groups, 6 directorates, 8 business areas, 12 capabilities, 8 people,
+- 4 groups, 6 directorates, 8 business areas, 12 capabilities,
+  17 people (8 owners/leads + 9 commenter personas reused on prompts),
   4 action plan strands
 - 12 projects spanning every stage (idea → scan → pilot → scale → stalled →
   sunset) with realistic Tier 1–3 governance, updates, and survey details
-- 10 FAQs, 5 learning items, 8 prompts, 5 events, 5 ChangeLog rows
+- 10 FAQs, 5 learning items, 5 events, 5 ChangeLog rows
+- 8 prompts, each with 3–7 comments, ~2 replies (single-level threading
+  via `parentKey`), and idempotent per-comment upvote rosters so the
+  redesigned card and comments modal both have content the moment the
+  seed lands
 
 Every document uses a deterministic `_id` (prefixed `demo-…`), so re-running
 the script overwrites the same records — no duplicates, safe to iterate.
