@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { resolveUser } from "@/lib/auth/resolver";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import { getSanityClient } from "@/lib/sanity/client";
 import {
   commitWithChangeLog,
@@ -45,7 +46,7 @@ const PROMPT_FOR_COMMENT_QUERY = /* groq */ `
  * Spec: openspec/specs/prompts-library/spec.md (Comments),
  * openspec/specs/change-tracking/spec.md.
  */
-export async function POST(request: Request, context: RouteContext): Promise<Response> {
+async function handlePost(request: Request, context: RouteContext): Promise<Response> {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -112,3 +113,5 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 
   return NextResponse.json({ count: after.length });
 }
+
+export const POST = withRequestLogging(handlePost);

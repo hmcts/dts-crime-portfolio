@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { resolveUser } from "@/lib/auth/resolver";
+import { withRequestLogging } from "@/lib/logging/withLogging";
 import { getSanityClient } from "@/lib/sanity/client";
 import {
   commitWithChangeLog,
@@ -44,7 +45,7 @@ const PROMPT_FOR_UPVOTE_QUERY = /* groq */ `
  * Spec: openspec/specs/prompts-library/spec.md (Idempotent upvotes),
  * openspec/specs/change-tracking/spec.md.
  */
-export async function POST(_request: Request, context: RouteContext): Promise<Response> {
+async function handlePost(_request: Request, context: RouteContext): Promise<Response> {
   const user = await resolveUser();
   if (user.kind === "unauthorized") {
     return NextResponse.json(
@@ -95,3 +96,5 @@ export async function POST(_request: Request, context: RouteContext): Promise<Re
 
   return NextResponse.json({ count: after.length, hasUpvote: !alreadyUpvoted });
 }
+
+export const POST = withRequestLogging(handlePost);
