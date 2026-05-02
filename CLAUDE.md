@@ -3,6 +3,56 @@
 The portal is specified in `openspec/specs/`. Read the relevant capability
 spec before changing behaviour. The spec is the contract; code conforms.
 
+## How work is done
+
+Every non-trivial change on this codebase is undertaken by a multi-disciplinary
+GDS-style team of agent personas (Product Manager, Delivery Manager, User
+Researcher, designers, developers, DevOps, QA, Performance Analyst, Security,
+Accessibility). The full composition, roles, conflict-resolution stack, and
+recording requirements are spec'd in
+[`openspec/specs/engineering-team/spec.md`](openspec/specs/engineering-team/spec.md).
+
+Two principles to internalise:
+
+1. **The Product Manager outranks "build it"** — before agreeing to write code,
+   the team considers whether the user outcome can be reached by a content
+   edit, a process change, an integration with an existing service, or simply
+   doing nothing.
+2. **Outcome over output** — the work isn't complete when the PR merges; it's
+   complete when the user outcome is reached.
+
+When dispatching agents, name the personas active on the change and record
+them in the PR description.
+
+### Skills per persona
+
+When acting as a persona, reach for these Claude skills / tools first. The
+spec stays runtime-agnostic; this list is the Claude-specific cheat sheet
+and may go stale — if you find a better tool for the job, update this table
+in the same PR that uses it.
+
+| Persona | Reach for |
+|---|---|
+| **Product Manager** | `superpowers:brainstorming` (challenge scope, surface non-technology alternatives); `WebSearch` / `WebFetch` (existing GDS / gov.uk services, Service Standard) |
+| **Delivery Manager** | `superpowers:writing-plans`; `schedule` (recurring follow-ups); the `Plan` agent (laying out the work) |
+| **User Researcher** | `WebFetch` (gov.uk research patterns, existing user research); the `Plan` agent for research-design notes |
+| **Service Designer / Interaction Designer / Content Designer** | `WebFetch` (gov.uk content + design patterns, GDS Design System); `superpowers:brainstorming` for journey mapping and flow proposals |
+| **Technical Architect** | `superpowers:writing-plans`; the `Plan` agent; the `openspec` slash commands when a proposal affects a capability spec |
+| **Lead Developer** | `superpowers:code-reviewer` (subagent type); `superpowers:simplify`; `superpowers:verification-before-completion`; `superpowers:requesting-code-review` and `superpowers:receiving-code-review` |
+| **Frontend Developer / Backend Developer** | `superpowers:test-driven-development`; `superpowers:simplify`; the `Explore` agent for fast codebase searches |
+| **DevOps Engineer** | `update-config` (settings.json); `fewer-permission-prompts`; `loop` / `schedule` for recurring jobs |
+| **QA / Test Engineer** | `superpowers:test-driven-development`; `superpowers:verification-before-completion`; `superpowers:systematic-debugging`; the `Explore` agent |
+| **Performance Analyst** | `WebSearch` / `WebFetch` for benchmarks and analytics references; the `Explore` agent for instrumentation surveys |
+| **Security Engineer** | `security-review` skill; `superpowers:code-reviewer` with a security framing |
+| **Accessibility Specialist** | `WebFetch` for WCAG 2.2 / GDS accessibility patterns; `superpowers:code-reviewer` with an a11y framing |
+
+Cross-cutting (any persona):
+
+- `superpowers:using-superpowers` — the meta-skill that ensures persona-specific skills get invoked
+- `superpowers:dispatching-parallel-agents` and `superpowers:using-git-worktrees` — for the team-of-agents working pattern itself
+- The `Explore` agent — fast, read-only codebase search for any persona
+- `openspec` slash commands (`/opsx:new`, `/opsx:apply`, `/opsx:archive`, etc.) — for the spec workflow when a change affects a capability spec
+
 ## Reading the spec
 
 - `openspec list --specs` — list every capability
