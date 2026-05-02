@@ -1,3 +1,5 @@
+"use client";
+
 import { AssuranceChip } from "@/components/portfolio/dossier/AssuranceChip";
 import { DossierGovernanceEditor } from "@/components/portfolio/dossier/edit/DossierGovernanceEditor";
 import { EditableSection } from "@/components/portfolio/dossier/edit/EditableSection";
