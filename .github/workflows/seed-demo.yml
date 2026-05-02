@@ -1,0 +1,81 @@
+name: seed-demo
+
+# Manually-triggered runner for the demo dataset seeder.
+# scripts/seed-demo.ts populates the configured Sanity dataset with
+# illustrative HMCTS DTS Crime content so the Product Manager can walk
+# every surface populated. The script is idempotent (deterministic
+# `demo-*` _ids + createOrReplace), and refuses to run against the
+# `production` dataset; this workflow inherits that guard and adds a
+# second one at the input layer.
+#
+# Permissions: contents: read so checkout works.
+# Secret: SANITY_API_TOKEN (Editor scope on the target dataset),
+# stored at the repo level and only used by this workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: "Sanity dataset to seed (must NOT be production)"
+        required: true
+        default: "preview"
+        type: choice
+        options:
+          - preview
+          - local
+      dryRun:
+        description: "Dry-run only — no writes, just print counts"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# Only one seed run at a time. A second dispatch waits for the first
+# rather than racing on the same documents.
+concurrency:
+  group: seed-demo-${{ inputs.dataset }}
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    name: seed ${{ inputs.dataset }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.dataset }}
+    steps:
+      - name: Refuse production
+        if: ${{ inputs.dataset == 'production' }}
+        run: |
+          echo "::error::This workflow refuses to seed the production dataset."
+          exit 1
+
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Seed
+        env:
+          NEXT_PUBLIC_SANITY_PROJECT_ID: vi5mhbtl
+          NEXT_PUBLIC_SANITY_DATASET: ${{ inputs.dataset }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
+        run: |
+          if [ -z "${SANITY_API_TOKEN}" ]; then
+            echo "::error::SANITY_API_TOKEN secret is not set on this repo. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ "${{ inputs.dryRun }}" = "true" ]; then
+            pnpm seed:demo -- --dry-run
+          else
+            pnpm seed:demo
+          fi
