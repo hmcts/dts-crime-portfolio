@@ -1,0 +1,43 @@
+name: deploy
+
+# Triggered after the `ci` workflow completes successfully on main.
+# Branch protection on main requires CI to pass before merge, so this
+# in effect runs after every merge that produced a green build.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-preview:
+    name: deploy preview to render
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: preview
+      url: ${{ vars.RENDER_PREVIEW_URL }}
+    steps:
+      - name: Trigger Render deploy hook
+        run: |
+          if [ -z "${RENDER_DEPLOY_HOOK_URL}" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          response=$(curl --silent --show-error --fail \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --write-out "\nhttp_status:%{http_code}\n" \
+            --data '{}' \
+            "${RENDER_DEPLOY_HOOK_URL}")
+          echo "${response}"
+          # Render returns 200 with a JSON deploy id when the hook fires.
+          echo "${response}" | grep -q '"deploy"' || {
+            echo "::error::Deploy hook did not return a deploy descriptor."
+            exit 1
+          }
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
