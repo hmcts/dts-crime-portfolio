@@ -1,8 +1,15 @@
 import { StagePill } from "@/components/portfolio/StagePill";
+import { DossierHeaderEditor } from "@/components/portfolio/dossier/edit/DossierHeaderEditor";
+import { EditableSection } from "@/components/portfolio/dossier/edit/EditableSection";
 import type { ProjectDossier } from "@/lib/portfolio/dossier";
 
-export function DossierHeader({ dossier }: { dossier: ProjectDossier }) {
-  return (
+interface DossierHeaderProps {
+  dossier: ProjectDossier;
+  canEdit?: boolean;
+}
+
+export function DossierHeader({ dossier, canEdit = false }: DossierHeaderProps) {
+  const display = (
     <header className="flex flex-col gap-3 border-b border-neutral-200 pb-5">
       <div className="flex flex-wrap items-center gap-2">
         <StagePill stage={dossier.projectStage} />
@@ -22,5 +29,20 @@ export function DossierHeader({ dossier }: { dossier: ProjectDossier }) {
         <p className="max-w-3xl text-sm leading-relaxed text-neutral-700">{dossier.description}</p>
       )}
     </header>
+  );
+
+  return (
+    <EditableSection
+      canEdit={canEdit}
+      pencilLabel="Edit description"
+      display={display}
+      renderEditor={(close) => (
+        <DossierHeaderEditor
+          projectId={dossier._id}
+          initialDescription={dossier.description}
+          onClose={close}
+        />
+      )}
+    />
   );
 }

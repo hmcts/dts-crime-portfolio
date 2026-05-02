@@ -1,9 +1,16 @@
 import { AssuranceChip } from "@/components/portfolio/dossier/AssuranceChip";
+import { DossierGovernanceEditor } from "@/components/portfolio/dossier/edit/DossierGovernanceEditor";
+import { EditableSection } from "@/components/portfolio/dossier/edit/EditableSection";
 import type { ProjectDossier } from "@/lib/portfolio/dossier";
 import { assuranceVerdict } from "@/lib/portfolio/dossierFormat";
 
-export function DossierGovernanceRow({ dossier }: { dossier: ProjectDossier }) {
-  return (
+interface DossierGovernanceRowProps {
+  dossier: ProjectDossier;
+  canEdit?: boolean;
+}
+
+export function DossierGovernanceRow({ dossier, canEdit = false }: DossierGovernanceRowProps) {
+  const display = (
     <section>
       <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
         Governance and assurance
@@ -30,5 +37,24 @@ export function DossierGovernanceRow({ dossier }: { dossier: ProjectDossier }) {
         />
       </div>
     </section>
+  );
+
+  return (
+    <EditableSection
+      canEdit={canEdit}
+      pencilLabel="Edit governance and assurance"
+      display={display}
+      renderEditor={(close) => (
+        <DossierGovernanceEditor
+          projectId={dossier._id}
+          initialGovernanceBody={dossier.governanceBody}
+          initialRiskRegister={dossier.riskRegister}
+          initialDpiaInPlace={dossier.dpiaInPlace}
+          initialActsInPlace={dossier.actsInPlace}
+          initialMojEthicsFrameworkUse={dossier.mojEthicsFrameworkUse}
+          onClose={close}
+        />
+      )}
+    />
   );
 }

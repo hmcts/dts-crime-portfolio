@@ -7,6 +7,7 @@ import { DossierGovernanceRow } from "@/components/portfolio/dossier/DossierGove
 import { DossierHeader } from "@/components/portfolio/dossier/DossierHeader";
 import { DossierPeopleRow } from "@/components/portfolio/dossier/DossierPeopleRow";
 import { DossierUpdates } from "@/components/portfolio/dossier/DossierUpdates";
+import { resolveUser } from "@/lib/auth/resolver";
 import { fetchProjectDossier } from "@/lib/portfolio/dossier";
 import { formatLastUpdatedFooter } from "@/lib/portfolio/format";
 
@@ -18,10 +19,13 @@ interface DossierPageProps {
 
 export default async function DossierPage({ params }: DossierPageProps) {
   const { id } = await params;
-  const dossier = await fetchProjectDossier(id);
+  const [dossier, user] = await Promise.all([fetchProjectDossier(id), resolveUser()]);
   if (!dossier) {
     notFound();
   }
+
+  const canEdit =
+    user.kind === "authorized" && (user.isAdmin || user.editableProjects.includes(id));
 
   return (
     <main className="mx-auto max-w-4xl p-6">
@@ -40,12 +44,12 @@ export default async function DossierPage({ params }: DossierPageProps) {
         Project dossier
       </p>
       <div className="mt-2 space-y-8">
-        <DossierHeader dossier={dossier} />
-        <DossierAreaRow dossier={dossier} />
-        <DossierPeopleRow dossier={dossier} />
-        <DossierGovernanceRow dossier={dossier} />
-        <DossierActionLinks dossier={dossier} />
-        <DossierUpdates dossier={dossier} />
+        <DossierHeader dossier={dossier} canEdit={canEdit} />
+        <DossierAreaRow dossier={dossier} canEdit={canEdit} />
+        <DossierPeopleRow dossier={dossier} canEdit={canEdit} />
+        <DossierGovernanceRow dossier={dossier} canEdit={canEdit} />
+        <DossierActionLinks dossier={dossier} canEdit={canEdit} />
+        <DossierUpdates dossier={dossier} canEdit={canEdit} />
         {dossier.githubUrl && (
           <section>
             <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">

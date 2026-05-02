@@ -1,8 +1,20 @@
+"use client";
+
+import { useState } from "react";
+
+import { AddUpdateEditor } from "@/components/portfolio/dossier/edit/AddUpdateEditor";
 import { PortableTextRenderer } from "@/lib/portable-text/renderer";
 import type { ProjectDossier } from "@/lib/portfolio/dossier";
 import { formatUpdateTimestamp } from "@/lib/portfolio/dossierFormat";
 
-export function DossierUpdates({ dossier }: { dossier: ProjectDossier }) {
+interface DossierUpdatesProps {
+  dossier: ProjectDossier;
+  canEdit?: boolean;
+}
+
+export function DossierUpdates({ dossier, canEdit = false }: DossierUpdatesProps) {
+  const [adding, setAdding] = useState(false);
+
   const updates = (dossier.updates ?? [])
     .slice()
     .sort((a, b) => {
@@ -13,9 +25,29 @@ export function DossierUpdates({ dossier }: { dossier: ProjectDossier }) {
 
   return (
     <section>
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Updates</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          Updates
+        </h2>
+        {canEdit && !adding && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            + Add update
+          </button>
+        )}
+      </div>
+
+      {adding && (
+        <div className="mt-3">
+          <AddUpdateEditor projectId={dossier._id} onClose={() => setAdding(false)} />
+        </div>
+      )}
+
       {updates.length === 0 ? (
-        <p className="mt-2 text-sm text-neutral-500">No updates yet.</p>
+        !adding && <p className="mt-2 text-sm text-neutral-500">No updates yet.</p>
       ) : (
         <ol className="mt-3 space-y-4 border-l border-neutral-200 pl-4">
           {updates.map((update, index) => (

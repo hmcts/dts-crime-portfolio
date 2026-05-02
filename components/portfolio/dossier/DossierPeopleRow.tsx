@@ -45,7 +45,17 @@ function PersonSlot({ role, person }: PersonSlotProps) {
   );
 }
 
-export function DossierPeopleRow({ dossier }: { dossier: ProjectDossier }) {
+interface DossierPeopleRowProps {
+  dossier: ProjectDossier;
+  /**
+   * Reserved for the people picker editor. Person reference editing is
+   * deferred behind the same canEdit gate — the prop is accepted now so
+   * downstream wiring is consistent across every dossier section.
+   */
+  canEdit?: boolean;
+}
+
+export function DossierPeopleRow({ dossier }: DossierPeopleRowProps) {
   return (
     <section>
       <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">People</h2>

@@ -1,6 +1,17 @@
 import type { ProjectDossier } from "@/lib/portfolio/dossier";
 
-export function DossierAreaRow({ dossier }: { dossier: ProjectDossier }) {
+interface DossierAreaRowProps {
+  dossier: ProjectDossier;
+  /**
+   * Reserved for the reference-picker editor. Reference field editing
+   * (group / directorate / business areas) is deferred behind the same
+   * canEdit gate — the prop is accepted now so downstream wiring is
+   * consistent across every dossier section.
+   */
+  canEdit?: boolean;
+}
+
+export function DossierAreaRow({ dossier }: DossierAreaRowProps) {
   const deliveryAreaParts = [dossier.group?.name, dossier.directorate?.name].filter(Boolean);
   const businessAreas = dossier.businessAreas ?? [];
 

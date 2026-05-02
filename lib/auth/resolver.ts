@@ -2,6 +2,8 @@ import "server-only";
 
 import { headers } from "next/headers";
 
+import { getSanityClient } from "@/lib/sanity/client";
+
 export type UserContext =
   | { kind: "unauthorized"; reason: UnauthorizedReason }
   | {
@@ -59,12 +61,22 @@ export function isInAdminAllowlist(email: string): boolean {
   return allowlist.includes(email);
 }
 
+const EDITOR_ACCESS_QUERY = /* groq */ `
+  *[_type == "editorAccess" && email == $email][0].projects[]._ref
+`;
+
 /**
- * Project-scoped editor allowlist. Stub returning an empty array — the real
- * lookup will query Sanity once the editor allowlist schema lands. Until
- * then, only Admins can mutate project documents (and Admins do not need
- * this list).
+ * Project-scoped editor allowlist. Queries the `editorAccess` Sanity
+ * document for the calling email and returns the list of project IDs they
+ * can mutate. No caching — this runs once per resolver call (i.e. once per
+ * request).
+ *
+ * Spec: openspec/specs/access-control/spec.md (Three-role model, Editor on
+ * a specific project).
  */
-async function fetchEditableProjects(_email: string): Promise<string[]> {
-  return [];
+export async function fetchEditableProjects(email: string): Promise<string[]> {
+  const client = getSanityClient();
+  const refs = await client.fetch<string[] | null>(EDITOR_ACCESS_QUERY, { email });
+  if (!Array.isArray(refs)) return [];
+  return refs.filter((value): value is string => typeof value === "string");
 }
