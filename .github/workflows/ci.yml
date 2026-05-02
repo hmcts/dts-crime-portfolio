@@ -1,9 +1,28 @@
 name: ci
 
+# Runs on PRs only. Branch protection requires every job below to be
+# green before a merge can land; re-running the same checks on the
+# resulting push-to-main is duplicate work and burns CI minutes for no
+# signal. `workflow_dispatch` is kept for manual re-runs (e.g. flake
+# re-trigger from the Actions UI).
+#
+# Job graph:
+#   openspec, typecheck, lint, test, build  — run in parallel.
+#   e2e (Playwright)                        — needs [test, build]; only
+#                                             fires if both pass, because
+#                                             Playwright is the most
+#                                             expensive job and re-runs
+#                                             of it after a unit-level
+#                                             failure add no signal.
+
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches: [main]
+    # Default activity types (`opened`, `synchronize`, `reopened`) only.
+    # `closed` is deliberately omitted — that's the activity that fires
+    # when a PR merges, and we never want CI to re-run on the merge.
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -83,3 +102,59 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+  e2e:
+    name: e2e
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: pnpm test:e2e
+
+      # The HTML report is small and useful on every run — passing runs
+      # carry timing data and per-test summaries that help spot flake or
+      # creeping slowness before it becomes a failure. Always upload.
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: warn
+
+      # test-results/ holds traces, screenshots, and (when configured)
+      # videos for failed tests only — playwright.config.ts uses
+      # `trace: "retain-on-failure"` and `screenshot: "only-on-failure"`.
+      # On a green run this directory is empty, so keep this gated on
+      # failure to avoid uploading nothing.
+      - name: Upload test-results (traces, screenshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
