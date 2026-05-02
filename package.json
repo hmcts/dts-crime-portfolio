@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@portabletext/react": "^6.0.3",
-    "@portabletext/types": "^2.0.13",
+    "@portabletext/types": "^4.0.2",
     "@sanity/client": "^7.11.2",
     "@sanity/vision": "^3.74.0",
     "docx": "^9.6.1",
