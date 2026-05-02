@@ -5,14 +5,17 @@ import {
   type PromptListItem,
 } from "@/lib/prompts/types";
 
+import { CommentForm } from "./CommentForm";
 import { CopyButton } from "./CopyButton";
+import { UpvoteButton } from "./UpvoteButton";
 
 /**
  * Card view of a single prompt for `/prompts`. Shows title, summary,
  * author + date, tool badge, tag chips, the prompt body in a monospace
- * `<pre>` block, a Copy button, and the upvote and comment counts. The
- * upvote and comment counts are read-only here — write endpoints land in
- * a follow-up PR.
+ * `<pre>` block, a Copy button, an idempotent upvote toggle, and an
+ * inline comment form. Upvote and comment counts come straight from the
+ * GROQ aggregates — `UpvoteButton` and `CommentForm` reconcile against
+ * the authoritative count returned by the write endpoint.
  */
 export function PromptCard({ prompt }: { prompt: PromptListItem }) {
   const colour = PROMPT_TOOL_BADGE_CLASSES[prompt.tool];
@@ -52,12 +55,12 @@ export function PromptCard({ prompt }: { prompt: PromptListItem }) {
       <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-neutral-200 bg-neutral-50 p-3 font-mono text-xs leading-relaxed text-neutral-800">
         {prompt.body}
       </pre>
-      <footer className="mt-3 flex items-center justify-between gap-2 border-t border-neutral-100 pt-3 text-xs text-neutral-600">
-        <div className="flex items-center gap-3">
-          <span aria-label={`${prompt.upvoteCount} upvotes`}>🔥 {prompt.upvoteCount}</span>
-          <span aria-label={`${prompt.commentCount} comments`}>💬 {prompt.commentCount}</span>
+      <footer className="mt-3 flex flex-col gap-3 border-t border-neutral-100 pt-3 text-xs text-neutral-600">
+        <div className="flex items-center justify-between gap-2">
+          <UpvoteButton promptId={prompt._id} initialCount={prompt.upvoteCount} />
+          <CopyButton value={prompt.body} />
         </div>
-        <CopyButton value={prompt.body} />
+        <CommentForm promptId={prompt._id} initialCount={prompt.commentCount} />
       </footer>
     </article>
   );
