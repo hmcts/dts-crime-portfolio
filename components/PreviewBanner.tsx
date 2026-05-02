@@ -8,6 +8,11 @@ import { isPreviewEnvironment } from "@/lib/preview-auth/environment";
  * `x-user-email` header that downstream code consumes) and a Sign out
  * button posting to /preview-auth/sign-out.
  *
+ * Note: the new AppHeader (in `(app)/layout.tsx`) also renders a Sign
+ * out button. Both are wired to the same POST handler. Tests should
+ * scope by region — the PreviewBanner's sign-out lives inside the
+ * banner div labelled "Preview environment".
+ *
  * Spec: openspec/specs/preview-auth/spec.md (Visual preview banner).
  */
 export async function PreviewBanner() {
@@ -17,7 +22,10 @@ export async function PreviewBanner() {
   const email = requestHeaders.get("x-user-email");
 
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-amber-300 bg-amber-100 px-4 py-2 text-sm text-amber-900">
+    <div
+      data-testid="preview-banner"
+      className="flex items-center justify-between gap-4 border-b border-amber-300 bg-amber-100 px-4 py-2 text-sm text-amber-900"
+    >
       <span>
         <strong className="font-semibold">Preview environment</strong> — not production. Test
         data only.
