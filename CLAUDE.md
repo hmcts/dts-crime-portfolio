@@ -3,6 +3,27 @@
 The portal is specified in `openspec/specs/`. Read the relevant capability
 spec before changing behaviour. The spec is the contract; code conforms.
 
+## How work is done
+
+Every non-trivial change on this codebase is undertaken by a multi-disciplinary
+GDS-style team of agent personas (Product Manager, Delivery Manager, User
+Researcher, designers, developers, DevOps, QA, Performance Analyst, Security,
+Accessibility). The full composition, roles, conflict-resolution stack, and
+recording requirements are spec'd in
+[`openspec/specs/engineering-team/spec.md`](openspec/specs/engineering-team/spec.md).
+
+Two principles to internalise:
+
+1. **The Product Manager outranks "build it"** — before agreeing to write code,
+   the team considers whether the user outcome can be reached by a content
+   edit, a process change, an integration with an existing service, or simply
+   doing nothing.
+2. **Outcome over output** — the work isn't complete when the PR merges; it's
+   complete when the user outcome is reached.
+
+When dispatching agents, name the personas active on the change and record
+them in the PR description.
+
 ## Reading the spec
 
 - `openspec list --specs` — list every capability
