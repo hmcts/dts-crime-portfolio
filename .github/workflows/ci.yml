@@ -17,9 +17,7 @@ name: ci
 
 on:
   pull_request:
-    branches:
-      - master
-      - main
+    branches: [main]
     # Default activity types (`opened`, `synchronize`, `reopened`) only.
     # `closed` is deliberately omitted — that's the activity that fires
     # when a PR merges, and we never want CI to re-run on the merge.
