@@ -1,3 +1,5 @@
+"use client";
+
 import { StagePill } from "@/components/portfolio/StagePill";
 import { DossierHeaderEditor } from "@/components/portfolio/dossier/edit/DossierHeaderEditor";
 import { EditableSection } from "@/components/portfolio/dossier/edit/EditableSection";
