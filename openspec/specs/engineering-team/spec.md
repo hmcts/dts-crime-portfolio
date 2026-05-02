@@ -62,7 +62,7 @@ The Product Manager's mandate is to keep the team focused on user value. The Pro
 - **WHEN** engineering proposes building a feature to solve a user problem
 - **THEN** the Product Manager SHALL ask whether the same outcome can be reached without writing code
 - **AND** the team SHALL only proceed with the build when no equally good non-technology alternative exists
-- **AND** the rejected alternatives SHALL be recorded in the change proposal so the trade-off is visible later
+- **AND** the rejected alternatives SHALL be recorded in the decision log so the trade-off is visible later
 
 #### Scenario: Outcome lacks user evidence
 - **WHEN** a feature proposal lacks user-research evidence
@@ -142,7 +142,7 @@ A higher tier of evidence overrides every lower tier. Disagreements that aren't 
 - **WHEN** the Product Manager wants to ship a thinner version of a feature than the Technical Architect believes is correct
 - **THEN** the team SHALL look for user research evidence first
 - **AND** if the evidence is silent, the Product Manager's call SHALL stand
-- **AND** the Technical Architect SHALL document the dissent in the plan record so the trade-off is visible
+- **AND** the Technical Architect SHALL document the dissent in the decision log so the trade-off is visible
 
 #### Scenario: Lead Developer disagrees with implementation approach
 - **WHEN** a Frontend or Backend Developer proposes an implementation that the Lead Developer believes will produce unmaintainable code
@@ -170,3 +170,66 @@ The team SHALL measure its success by user outcomes reaching DTS Crime users, no
 - **WHEN** the Product Manager identifies that an existing user outcome can be reached by a non-technology change (content edit, process change, link to existing service)
 - **THEN** the team SHALL prefer the non-technology change
 - **AND** any planned code work for the same outcome SHALL be paused or removed from the backlog
+- **AND** the decision SHALL be recorded in the decision log (see "Decision log" requirement below)
+
+### Requirement: Every decision is recorded in the decision log
+Every meaningful team decision SHALL be recorded in a single shared decision log so future readers can reconstruct the reasoning. Decisions in scope include scope choices ("we're building X" / "we're not"), build-vs-non-technology choices, architectural choices, deliberate deferrals, and any trade-off where one option won over another for a non-obvious reason.
+
+The log lives at `decisions/` at the repo root as a directory of dated markdown files, one file per decision: `decisions/YYYY-MM-DD-<short-slug>.md`. Each file follows this template:
+
+- **Date** — ISO date
+- **Decision** — one-line summary
+- **Decider** — the persona(s) or whole team who decided, drawn from the personas in this spec
+- **Context** — the user need or operational signal that triggered the decision
+- **Options considered** — the alternatives, including non-technology alternatives
+- **Decision rationale** — why the chosen option won
+- **Consequences** — what this commits the team to, and what was deferred
+- **Revisit when** — optional condition under which the decision should be re-opened
+
+PR descriptions and OpenSpec change proposals SHALL link to the relevant decision file when one applies.
+
+#### Scenario: Build-vs-non-technology decision is logged
+- **WHEN** the Product Manager rejects a build-first proposal in favour of a non-technology alternative
+- **THEN** a decision file SHALL be added under `decisions/` capturing the rejected technology option, the chosen alternative, and the rationale
+- **AND** any future PR re-proposing the same build SHALL link to that decision file and either address it directly or trigger an explicit re-open of the decision
+
+#### Scenario: Architectural choice is logged
+- **WHEN** the Technical Architect picks one approach over another (e.g. "use server components for the dossier", "defer canvas/WebGL for galaxy v0")
+- **THEN** a decision file SHALL be added with the alternatives and rationale
+- **AND** the decision file SHALL be linked from any PR that depends on the choice
+
+#### Scenario: Deliberate deferral is logged
+- **WHEN** a feature ships with a deliberately-deferred piece (e.g. "PowerPoint export pulled because pptxgenjs imports `node:https`")
+- **THEN** the deferral SHALL appear in a decision file with the trigger condition for revisiting
+- **AND** the team SHALL avoid losing track of the deferral by surfacing the file when the trigger condition is met
+
+#### Scenario: Trivial change is exempt
+- **WHEN** a change is genuinely trivial (typo, comment, dependency patch with no breaking-change risk)
+- **THEN** a decision-log entry is OPTIONAL
+- **AND** the change still records its team composition per the existing requirement
+
+### Requirement: Decisions are made at the right level and delegated to capabilities
+Once the team agrees on a higher-level decision (whether to build, what scope, what approach), authority for the implementation-level decisions inside that scope SHALL pass to the personas executing the work. Those personas decide within the agreed scope using the conflict-resolution stack at their level. They re-open the higher-level decision only when their work reveals new information that would change it.
+
+This delegation is the spine of how the team gets through work without re-litigating settled questions. The Product Manager doesn't review every component name; the Technical Architect doesn't review every test name; the Lead Developer doesn't review every CSS class.
+
+#### Scenario: Implementation decisions stay with implementers
+- **WHEN** the team has agreed to build a feature and engineering is in flight
+- **THEN** choices about component structure, validation libraries, error handling, and test strategy SHALL be owned by the engineering personas (Lead Developer, Frontend Developer, Backend Developer, QA / Test Engineer, DevOps Engineer)
+- **AND** the Product Manager and User Researcher SHALL NOT intervene unless an implementation choice changes the user outcome
+- **AND** the engineering personas SHALL NOT escalate routine implementation choices back up the team
+
+#### Scenario: Each capability owns its bar
+- **WHEN** an in-flight decision falls inside one persona's remit
+- **THEN** that persona has the call within the agreed scope (e.g. test strategy → QA / Test Engineer; security review → Security Engineer; accessibility approach → Accessibility Specialist; deployment strategy → DevOps Engineer)
+- **AND** escalation up the conflict-resolution stack happens only when capabilities disagree on the same decision
+
+#### Scenario: Implementation reveals a higher-level question
+- **WHEN** engineering encounters an issue that would change the agreed direction (e.g. "this approach can't meet WCAG 2.2 AA; we need to reconsider the scope")
+- **THEN** engineering SHALL escalate back to the full team rather than silently changing the scope
+- **AND** the resulting re-decision SHALL be added to the decision log with a clear link to the original decision it supersedes
+
+#### Scenario: Decision delegation is recorded
+- **WHEN** the team agrees a higher-level decision and delegates the in-scope work to a subset of personas
+- **THEN** the decision file SHALL list the delegated personas under "Decider" so future readers see the chain of authority
+- **AND** subsequent in-scope decisions taken by that subset MAY append to the original decision file as dated sub-entries rather than spawning a separate file
