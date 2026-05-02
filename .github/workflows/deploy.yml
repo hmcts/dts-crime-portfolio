@@ -27,17 +27,29 @@ jobs:
             echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set. Add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
-          response=$(curl --silent --show-error --fail \
+          # Render returns:
+          #  - HTTP 200 + {"deploy":{"id":"..."}} — a new deploy started
+          #  - HTTP 202 + {} — a deploy is already in flight; Render will
+          #    pick up the latest commit when it finishes. This happens
+          #    when several merges land back-to-back.
+          # Both are success from our point of view: the next deploy
+          # will reflect HEAD. Anything else is an error.
+          response=$(curl --silent --show-error \
             --request POST \
             --header "Content-Type: application/json" \
-            --write-out "\nhttp_status:%{http_code}\n" \
+            --write-out "\nhttp_status:%{http_code}" \
             --data '{}' \
             "${RENDER_DEPLOY_HOOK_URL}")
           echo "${response}"
-          # Render returns 200 with a JSON deploy id when the hook fires.
-          echo "${response}" | grep -q '"deploy"' || {
-            echo "::error::Deploy hook did not return a deploy descriptor."
-            exit 1
-          }
+          status=$(echo "${response}" | sed -n 's/^http_status://p' | tr -d '[:space:]')
+          case "${status}" in
+            200|202)
+              echo "Render accepted the deploy hook (HTTP ${status})."
+              ;;
+            *)
+              echo "::error::Render rejected the deploy hook (HTTP ${status})."
+              exit 1
+              ;;
+          esac
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
