@@ -116,6 +116,44 @@ Each persona SHALL operate within a defined remit. The team's collective output 
 - **AND** the Accessibility Specialist SHALL confirm the consent banner UX still works
 - **AND** only after these lenses are applied SHALL Frontend / Backend Developers implement the event
 
+### Requirement: Design Lead is an on-demand role
+The team SHALL NOT include a permanent Design Lead. The user-experience capability is delivered by the five GDS-aligned specialists (User Researcher, Service Designer, Interaction Designer, Content Designer, Accessibility Specialist), each owning their remit per the arbiter map. A Design Lead persona MAY be added to the team on demand only when those specialists genuinely cannot reach a coherent decision among themselves on a cross-design question — for example, conflicting recommendations on a flow that affects content, interaction, and accessibility together.
+
+The team SHALL NOT add a Design Lead silently. When the design specialists detect they are stuck in a way that could justify the role, they SHALL surface the question to the wider team and explicitly ask whether a Design Lead should be added. The default answer is "no" — the team is expected to be self-sufficient via the arbiter map and the conflict-resolution path through the Product Manager. The bar for "yes" is that the same kind of conflict has recurred across multiple changes and is unresolvable without dedicated cross-design authority. Additions SHALL be rare.
+
+When a Design Lead IS added, the role:
+- coordinates across the five design specialists (analogous to how Lead Developer coordinates engineering personas);
+- acts as the design-side arbiter at the Lead Developer / Technical Architect tier;
+- owns the design-review gate before engineering starts on the change(s) that triggered the addition;
+- participates only on the change(s) that triggered their addition, not every change;
+- is retired once the underlying recurring conflict resolves.
+
+The same on-demand pattern (surface the question, default "no", justify in the decision log, retire when no longer needed) applies to any other role outside the standard fifteen personas. The team's standing assumption is that it is self-sufficient until evidence proves otherwise.
+
+#### Scenario: Cross-design conflict prompts the question
+- **WHEN** the design specialists produce conflicting recommendations on a single decision (e.g. Interaction Designer wants to maximise discoverability, Content Designer wants brevity, Accessibility Specialist wants screen-reader clarity) and they cannot reconcile within their lenses
+- **THEN** the team SHALL pause and explicitly ask whether a Design Lead should be added
+- **AND** the question SHALL be answered before the change proceeds
+- **AND** the answer SHALL be recorded in the decision log
+
+#### Scenario: Default answer is "no"
+- **WHEN** the question "should we add a Design Lead?" is raised on a single change for the first time
+- **THEN** the answer SHALL default to "no"
+- **AND** the team SHALL escalate the design conflict via the existing arbiter map (cross-capability disagreement → research evidence → Product Manager) rather than reaching for a new role
+- **AND** the decision log SHALL record why a Design Lead was not added on this occasion
+
+#### Scenario: Recurring conflict justifies adding the role
+- **WHEN** the same kind of cross-design conflict has recurred across at least three changes
+- **AND** the existing arbiter path has not produced a stable resolution
+- **THEN** the team MAY add a Design Lead persona for those changes
+- **AND** the addition SHALL be recorded in the decision log with the trigger conditions documenting why the team is no longer self-sufficient
+- **AND** the addition SHALL be reviewed periodically — if the underlying recurring conflict resolves, the Design Lead SHALL be retired
+
+#### Scenario: The same pattern applies to other on-demand roles
+- **WHEN** any role outside the standard fifteen personas would help (e.g. a Data Architect for a complex schema migration, a Localisation Specialist for multi-language rollout, a Legal / IG advisor for a sensitive data flow)
+- **THEN** the team SHALL apply the same pattern: surface the question, default to "no", justify any addition in the decision log, retire the role when no longer needed
+- **AND** the team SHALL NOT add new personas reactively — additions are rare and evidenced
+
 ### Requirement: Specialists are on standby when not active
 For tasks where a specialist lens is not active, the persona SHALL be on standby — consulted before a final decision but not participating in implementation. Standby SHALL be recorded explicitly in the change record.
 
