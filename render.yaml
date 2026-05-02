@@ -1,0 +1,64 @@
+# Render Blueprint
+# Spec: https://render.com/docs/blueprint-spec
+#
+# Provisions the preview Web Service for the Crime Portfolio. Deployment
+# is triggered by .github/workflows/deploy.yml on every successful CI run
+# against main, NOT by Render's auto-deploy. Set autoDeploy: false here
+# and use a deploy hook from the Render dashboard.
+#
+# After importing this blueprint in Render:
+#   1. Set the secret env vars marked `sync: false` in the dashboard
+#      (SANITY_API_TOKEN, ADMIN_ALLOWLIST).
+#   2. Create a deploy hook (Service settings → Deploy Hooks → New).
+#   3. Add the deploy-hook URL to GitHub repo secrets as
+#      RENDER_DEPLOY_HOOK_URL.
+#   4. Merge to main; the deploy workflow takes over from there.
+
+services:
+  - type: web
+    name: dts-crime-portfolio-preview
+    runtime: node
+    region: oregon
+    plan: starter
+    branch: main
+    autoDeploy: false
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /
+    envVars:
+      # Pinned to .nvmrc; Render reads this if .nvmrc isn't honoured.
+      - key: NODE_VERSION
+        value: "22"
+
+      # Application environment — preview deployment.
+      - key: APP_ENVIRONMENT
+        value: preview
+
+      # Sanity — non-secret. Same defaults as sanity.config.ts so missing
+      # env doesn't break the build, but the production deploy will set
+      # different values.
+      - key: NEXT_PUBLIC_SANITY_PROJECT_ID
+        value: vi5mhbtl
+      - key: NEXT_PUBLIC_SANITY_DATASET
+        value: preview
+
+      # Sanity API token — server-side only. Editor role, scoped to the
+      # preview dataset. Set in the Render dashboard.
+      - key: SANITY_API_TOKEN
+        sync: false
+
+      # Preview-auth cookie HMAC secret. Render generates a strong value
+      # and reuses it across deploys until the service is recreated.
+      - key: PREVIEW_AUTH_COOKIE_SECRET
+        generateValue: true
+
+      # Admin allowlist — comma- or whitespace-separated emails. Set in
+      # the dashboard so adding/removing admins doesn't require a code
+      # change.
+      - key: ADMIN_ALLOWLIST
+        sync: false
+
+      # Logger threshold. Default is info; raise to debug for diagnostic
+      # builds via the dashboard.
+      - key: LOG_LEVEL
+        value: info
