@@ -1,17 +1,21 @@
 name: ci
 
-# Triggers fire on push-to-main as well as on pull_request, but every
-# job below skips when `github.event_name == 'push'`. Branch protection
-# already requires this workflow to be green BEFORE the merge — re-running
-# it after the merge is redundant work and burns CI minutes for no signal.
-# The post-merge run still appears in the Actions tab as `skipped`, which
-# is what we want for audit.
+# Runs on PRs only. Branch protection requires every job below to be
+# green before a merge can land; re-running the same checks on the
+# resulting push-to-main is duplicate work and burns CI minutes for no
+# signal. `workflow_dispatch` is kept for manual re-runs (e.g. flake
+# re-trigger from the Actions UI).
 #
-# Manual re-run is supported via `workflow_dispatch`.
+# Job graph:
+#   openspec, typecheck, lint, test, build  — run in parallel.
+#   e2e (Playwright)                        — needs [test, build]; only
+#                                             fires if both pass, because
+#                                             Playwright is the most
+#                                             expensive job and re-runs
+#                                             of it after a unit-level
+#                                             failure add no signal.
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -25,7 +29,6 @@ concurrency:
 jobs:
   openspec:
     name: openspec validate
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -37,7 +40,6 @@ jobs:
 
   typecheck:
     name: typecheck
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -53,7 +55,6 @@ jobs:
 
   lint:
     name: lint
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -69,7 +70,6 @@ jobs:
 
   test:
     name: test
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -85,7 +85,6 @@ jobs:
 
   build:
     name: build
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -98,3 +97,59 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+  e2e:
+    name: e2e
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: pnpm test:e2e
+
+      # The HTML report is small and useful on every run — passing runs
+      # carry timing data and per-test summaries that help spot flake or
+      # creeping slowness before it becomes a failure. Always upload.
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: warn
+
+      # test-results/ holds traces, screenshots, and (when configured)
+      # videos for failed tests only — playwright.config.ts uses
+      # `trace: "retain-on-failure"` and `screenshot: "only-on-failure"`.
+      # On a green run this directory is empty, so keep this gated on
+      # failure to avoid uploading nothing.
+      - name: Upload test-results (traces, screenshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
