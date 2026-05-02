@@ -8,7 +8,9 @@
 #
 # After importing this blueprint in Render:
 #   1. Set the secret env vars marked `sync: false` in the dashboard
-#      (SANITY_API_TOKEN, ADMIN_ALLOWLIST).
+#      (SANITY_API_TOKEN, ADMIN_ALLOWLIST, POSTHOG_PROJECT_KEY,
+#      POSTHOG_INGEST_URL, ANALYTICS_INGEST_MODE,
+#      ANALYTICS_USER_ID_PEPPER).
 #   2. Create a deploy hook (Service settings → Deploy Hooks → New).
 #   3. Add the deploy-hook URL to GitHub repo secrets as
 #      RENDER_DEPLOY_HOOK_URL.
@@ -62,3 +64,40 @@ services:
       # builds via the dashboard.
       - key: LOG_LEVEL
         value: info
+
+      # Analytics (PostHog). The portal has no PostHog SDK dependency —
+      # `lib/analytics/client.ts` POSTs events directly via fetch. Spec:
+      # openspec/specs/analytics/spec.md.
+      #
+      # POSTHOG_PROJECT_KEY — the `phc_…` Project API key. Server-side
+      # only when ANALYTICS_INGEST_MODE=proxy; never reaches the browser.
+      - key: POSTHOG_PROJECT_KEY
+        sync: false
+
+      # POSTHOG_INGEST_URL — region-dependent. EU Cloud:
+      # https://eu.i.posthog.com (default). US Cloud:
+      # https://us.i.posthog.com. Self-hosted: your origin.
+      - key: POSTHOG_INGEST_URL
+        sync: false
+
+      # ANALYTICS_INGEST_MODE — one of `direct` or `proxy`. `proxy` is
+      # recommended: the browser POSTs to the same-origin
+      # /api/analytics/ingest route, which forwards server-side with the
+      # project key attached. The browser never holds the key.
+      - key: ANALYTICS_INGEST_MODE
+        sync: false
+
+      # ANALYTICS_USER_ID_PEPPER — server-only secret mixed into the
+      # SHA-256 of the user's email to produce a stable but
+      # non-reversible distinct_id. Generate with `openssl rand -hex 32`.
+      # Rotating discontinues identifier stability — historic events
+      # remain associated with the previous pepper. See
+      # decisions/2026-05-02-defer-secrets-manager-choice-until-production.md.
+      - key: ANALYTICS_USER_ID_PEPPER
+        sync: false
+
+      # ANALYTICS_DROP_IP — `true` strips x-forwarded-for / x-real-ip
+      # before forwarding through the proxy. Privacy-by-default for the
+      # preview environment.
+      - key: ANALYTICS_DROP_IP
+        value: "true"
