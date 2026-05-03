@@ -60,6 +60,32 @@ vi.mock("@/lib/sanity/client", () => ({
   getSanityClient: () => sanityClientMock.client,
 }));
 
+// Prompts now live in Postgres; the lifecycle smoke test doesn't need a
+// real DB. Stub `getDb` to a no-op chain that returns empty arrays —
+// every route then exits via its own 404 path while the wrapper still
+// emits the request_start / request_end pair we're asserting.
+vi.mock("@/lib/db/client", () => {
+  const empty = async () => [] as never[];
+  const builder: Record<string, unknown> = {};
+  const chain = (returnValue: unknown = []): Record<string, unknown> => {
+    const obj: Record<string, unknown> = {};
+    const methods = ["select", "from", "where", "limit", "orderBy", "values"];
+    for (const m of methods) {
+      obj[m] = () => obj;
+    }
+    obj.then = (resolve: (v: unknown) => unknown) => Promise.resolve(returnValue).then(resolve);
+    return obj;
+  };
+  builder.select = () => chain([]);
+  builder.insert = () => ({ values: () => Promise.resolve() });
+  builder.delete = () => ({ where: () => Promise.resolve() });
+  void empty;
+  return {
+    getDb: () => builder,
+    closeDb: async () => {},
+  };
+});
+
 const REQUIRED_FIELDS = ["timestamp", "level", "event", "service"] as const;
 
 function expectLifecycleEvents(events: ReturnType<typeof captureLogs>["events"]) {

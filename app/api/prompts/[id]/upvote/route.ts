@@ -1,14 +1,15 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
+import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+import { writeChangeLog } from "@/lib/audit/changelog";
 import { resolveUser } from "@/lib/auth/resolver";
+import { getDb } from "@/lib/db/client";
+import { promptUpvotes, prompts as promptsTable } from "@/lib/db/schema";
 import { withRequestLogging } from "@/lib/logging/withLogging";
-import { getSanityClient } from "@/lib/sanity/client";
-import {
-  commitWithChangeLog,
-  type FieldChange,
-} from "@/lib/sanity/transaction";
 
 export const dynamic = "force-dynamic";
 
@@ -16,31 +17,17 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-interface UpvoteEntry {
-  _key: string;
-  userEmail: string;
-  createdAt: string;
-}
-
-interface PromptForUpvote {
-  _id: string;
-  upvotes: UpvoteEntry[] | null;
-}
-
-const PROMPT_FOR_UPVOTE_QUERY = /* groq */ `
-  *[_type == "prompt" && _id == $id][0] {
-    _id,
-    upvotes
-  }
-`;
-
 /**
  * POST /api/prompts/[id]/upvote
  *
- * Idempotent toggle. If the caller's email is already in the prompt's
- * upvotes array, it is removed. Otherwise a fresh entry is appended. Every
- * write produces one ChangeLog row recording the before/after upvote
- * arrays, with the resolver-supplied email.
+ * Idempotent toggle backed by the `prompt_upvotes` Postgres table.
+ * (prompt_id, user_email) is the composite primary key so duplicate
+ * inserts collide at the DB level — the toggle here flips between
+ * insert and delete based on whether the row already exists.
+ *
+ * One ChangeLog row is written to Sanity after a successful toggle so
+ * the audit trail still lives in one place. Email is hashed in the
+ * audit body to keep cleartext addresses out of the log.
  *
  * Spec: openspec/specs/prompts-library/spec.md (Idempotent upvotes),
  * openspec/specs/change-tracking/spec.md.
@@ -55,50 +42,66 @@ async function handlePost(_request: Request, context: RouteContext): Promise<Res
   }
 
   const { id } = await context.params;
+  const db = getDb();
 
-  const client = getSanityClient();
-  const prompt = await client.fetch<PromptForUpvote | null>(PROMPT_FOR_UPVOTE_QUERY, {
-    id,
-  });
+  const [prompt] = await db
+    .select({ id: promptsTable.id })
+    .from(promptsTable)
+    .where(eq(promptsTable.id, id))
+    .limit(1);
   if (!prompt) {
     return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
   }
 
-  const before: UpvoteEntry[] = Array.isArray(prompt.upvotes) ? prompt.upvotes : [];
-  const alreadyUpvoted = before.some((entry) => entry.userEmail === user.email);
-  const after: UpvoteEntry[] = alreadyUpvoted
-    ? before.filter((entry) => entry.userEmail !== user.email)
-    : [
-        ...before,
-        {
-          _key: crypto.randomUUID(),
-          userEmail: user.email,
-          createdAt: new Date().toISOString(),
-        },
-      ];
+  const [existing] = await db
+    .select()
+    .from(promptUpvotes)
+    .where(
+      and(
+        eq(promptUpvotes.promptId, id),
+        eq(promptUpvotes.userEmail, user.email),
+      ),
+    )
+    .limit(1);
+  const alreadyUpvoted = !!existing;
 
-  const changes: FieldChange[] = [
-    {
-      documentId: prompt._id,
-      documentType: "prompt",
-      field: "upvotes",
-      before,
-      after,
-    },
-  ];
+  if (alreadyUpvoted) {
+    await db
+      .delete(promptUpvotes)
+      .where(
+        and(
+          eq(promptUpvotes.promptId, id),
+          eq(promptUpvotes.userEmail, user.email),
+        ),
+      );
+  } else {
+    await db.insert(promptUpvotes).values({
+      promptId: id,
+      userEmail: user.email,
+      createdAt: new Date(),
+    });
+  }
 
-  await commitWithChangeLog({
-    mutations: (transaction) => transaction.patch(prompt._id, { set: { upvotes: after } }),
-    changes,
-    userEmail: user.email,
-    client,
-  });
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(promptUpvotes)
+    .where(eq(promptUpvotes.promptId, id));
 
-  // `voted` reflects the caller's status AFTER the toggle so the client
-  // can sync its local "I have voted" indicator to the server's truth in
-  // a single round-trip. Spec: openspec/specs/prompts-library/spec.md
-  // (Idempotent upvotes).
-  return NextResponse.json({ count: after.length, voted: !alreadyUpvoted });
+  const userKey = createHash("sha256").update(user.email).digest("hex").slice(0, 16);
+  await writeChangeLog(
+    [
+      {
+        documentId: id,
+        documentType: "prompt",
+        field: "upvotes",
+        before: { user: userKey, voted: alreadyUpvoted },
+        after: { user: userKey, voted: !alreadyUpvoted, count },
+      },
+    ],
+    user.email,
+  );
+
+  return NextResponse.json({ count, voted: !alreadyUpvoted });
 }
 
 export const POST = withRequestLogging(handlePost);

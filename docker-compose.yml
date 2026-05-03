@@ -1,0 +1,34 @@
+# Local Postgres for development. Brought up by `docker compose up -d`;
+# stopped by `docker compose down`. Data persists in the named volume
+# until you run `docker compose down -v`.
+#
+# DATABASE_URL for the app:
+#   postgres://crime:crime@localhost:5432/crime
+#
+# Apply migrations after first bring-up:
+#   pnpm db:migrate
+# Seed demo content:
+#   pnpm db:seed
+#
+# Spec: decisions/2026-05-03-postgres-prompts-spike.md.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crime-postgres
+    environment:
+      POSTGRES_USER: crime
+      POSTGRES_PASSWORD: crime
+      POSTGRES_DB: crime
+    ports:
+      - "5432:5432"
+    volumes:
+      - crime-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crime -d crime"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  crime-postgres-data:

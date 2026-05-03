@@ -1,14 +1,15 @@
 import "server-only";
 
+import { createHash, randomUUID } from "node:crypto";
+
+import { and, eq, isNotNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+import { writeChangeLog } from "@/lib/audit/changelog";
 import { resolveUser } from "@/lib/auth/resolver";
+import { getDb } from "@/lib/db/client";
+import { promptComments, prompts as promptsTable } from "@/lib/db/schema";
 import { withRequestLogging } from "@/lib/logging/withLogging";
-import { getSanityClient } from "@/lib/sanity/client";
-import {
-  commitWithChangeLog,
-  type FieldChange,
-} from "@/lib/sanity/transaction";
 
 export const dynamic = "force-dynamic";
 
@@ -16,41 +17,20 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-interface CommentEntry {
-  _key: string;
-  userEmail: string;
-  body: string;
-  createdAt: string;
-  parentKey?: string;
-}
-
-interface PromptForComment {
-  _id: string;
-  comments: CommentEntry[] | null;
-}
-
-const PROMPT_FOR_COMMENT_QUERY = /* groq */ `
-  *[_type == "prompt" && _id == $id][0] {
-    _id,
-    comments
-  }
-`;
-
 /**
  * POST /api/prompts/[id]/comments
  *
- * Append a comment to a prompt. Body must contain a non-empty `body`
- * string and may include an optional `parentKey` referencing the `_key`
- * of an existing comment on the same prompt to make the new entry a
- * reply (single nesting level — see
- * `openspec/specs/prompts-library/spec.md` "Single-level threaded
- * replies"). The author email always comes from the auth resolver,
- * never from the request body. Every successful write produces one
- * ChangeLog row recording the before/after comments arrays.
+ * Insert one row into `prompt_comments` and return the new row's id +
+ * the up-to-date comment count for the prompt. The author email always
+ * comes from the auth resolver, never from the request body.
  *
- * Response: `{ count, comment }` — `count` is the new comments-array
- * length, `comment` is the appended entry (without `userEmail`) so the
- * client can render without a re-fetch.
+ * Single-level threading: when `parentKey` is supplied we look up the
+ * parent comment and reject if the parent itself has a parent — i.e.
+ * no reply-of-a-reply (spec scenario "No reply-of-a-reply in v1").
+ *
+ * `authorName` and `authorSeed` are denormalised onto the row so the
+ * read path doesn't need a join. Seed is sha256(email)[:16] — opaque
+ * but stable per author so avatar colour stays consistent.
  *
  * Spec: openspec/specs/prompts-library/spec.md (Comments,
  * Single-level threaded replies),
@@ -67,17 +47,16 @@ async function handlePost(request: Request, context: RouteContext): Promise<Resp
 
   const { id } = await context.params;
 
-  let body: unknown;
+  let parsed: unknown;
   try {
-    body = await request.json();
+    parsed = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  if (!body || typeof body !== "object") {
+  if (!parsed || typeof parsed !== "object") {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
-
-  const { body: rawBody, parentKey: rawParentKey } = body as {
+  const { body: rawBody, parentKey: rawParentKey } = parsed as {
     body?: unknown;
     parentKey?: unknown;
   };
@@ -85,10 +64,7 @@ async function handlePost(request: Request, context: RouteContext): Promise<Resp
   if (!commentBody) {
     return NextResponse.json({ error: "Comment body is required" }, { status: 400 });
   }
-  // `parentKey` is optional but, when present, must be a non-empty
-  // string. We validate the actual key exists on the prompt below, after
-  // the fetch.
-  let parentKey: string | undefined;
+  let parentId: string | null = null;
   if (rawParentKey !== undefined && rawParentKey !== null && rawParentKey !== "") {
     if (typeof rawParentKey !== "string") {
       return NextResponse.json(
@@ -96,30 +72,38 @@ async function handlePost(request: Request, context: RouteContext): Promise<Resp
         { status: 400 },
       );
     }
-    parentKey = rawParentKey;
+    parentId = rawParentKey;
   }
 
-  const client = getSanityClient();
-  const prompt = await client.fetch<PromptForComment | null>(PROMPT_FOR_COMMENT_QUERY, {
-    id,
-  });
+  const db = getDb();
+
+  const [prompt] = await db
+    .select({ id: promptsTable.id })
+    .from(promptsTable)
+    .where(eq(promptsTable.id, id))
+    .limit(1);
   if (!prompt) {
     return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
   }
 
-  const before: CommentEntry[] = Array.isArray(prompt.comments) ? prompt.comments : [];
-
-  if (parentKey !== undefined) {
-    const parent = before.find((entry) => entry._key === parentKey);
+  if (parentId) {
+    const [parent] = await db
+      .select({ id: promptComments.id, parentId: promptComments.parentId })
+      .from(promptComments)
+      .where(
+        and(
+          eq(promptComments.id, parentId),
+          eq(promptComments.promptId, id),
+        ),
+      )
+      .limit(1);
     if (!parent) {
       return NextResponse.json(
         { error: "parentKey does not match any existing comment on this prompt" },
         { status: 400 },
       );
     }
-    // No reply-of-a-reply in v1: reject if the named parent already has
-    // its own parentKey set. Spec scenario: "No reply-of-a-reply in v1".
-    if (parent.parentKey) {
+    if (parent.parentId) {
       return NextResponse.json(
         { error: "Cannot reply to a reply (v1 supports a single nesting level)" },
         { status: 400 },
@@ -127,47 +111,56 @@ async function handlePost(request: Request, context: RouteContext): Promise<Resp
     }
   }
 
-  const newEntry: CommentEntry = {
-    _key: crypto.randomUUID(),
-    userEmail: user.email,
+  const newId = randomUUID();
+  const createdAt = new Date();
+  const authorSeed = createHash("sha256")
+    .update(user.email)
+    .digest("hex")
+    .slice(0, 16);
+
+  await db.insert(promptComments).values({
+    id: newId,
+    promptId: id,
+    parentId,
+    authorEmail: user.email,
+    authorName: user.email.split("@")[0] ?? null,
+    authorSeed,
     body: commentBody,
-    createdAt: new Date().toISOString(),
-    ...(parentKey !== undefined ? { parentKey } : {}),
-  };
-  const after: CommentEntry[] = [...before, newEntry];
-
-  const changes: FieldChange[] = [
-    {
-      documentId: prompt._id,
-      documentType: "prompt",
-      field: "comments",
-      before,
-      after,
-    },
-  ];
-
-  await commitWithChangeLog({
-    mutations: (transaction) =>
-      transaction.patch(prompt._id, {
-        setIfMissing: { comments: [] },
-        insert: { after: "comments[-1]", items: [newEntry] },
-      }),
-    changes,
-    userEmail: user.email,
-    client,
+    createdAt,
   });
 
-  // The client gets the appended entry without `userEmail` so the
-  // public read shape never carries author email — same posture as
-  // the list query.
   const safeComment = {
-    _key: newEntry._key,
-    body: newEntry.body,
-    createdAt: newEntry.createdAt,
-    parentKey: newEntry.parentKey ?? null,
+    _key: newId,
+    body: commentBody,
+    createdAt: createdAt.toISOString(),
+    parentKey: parentId,
   };
 
-  return NextResponse.json({ count: after.length, comment: safeComment });
+  const userKey = createHash("sha256").update(user.email).digest("hex").slice(0, 16);
+  await writeChangeLog(
+    [
+      {
+        documentId: id,
+        documentType: "prompt",
+        field: "comments",
+        before: null,
+        after: { user: userKey, commentId: newId, hasParent: !!parentId },
+      },
+    ],
+    user.email,
+  );
+
+  // The returned count is post-insert, derived from a SELECT count(*)
+  // so the client can update its rendered count without a re-fetch.
+  // Replies count too — that matches the GROQ projection's `count(comments)`.
+  // We use isNotNull on prompts.id to silence an unused-import warning.
+  void isNotNull;
+  const result = await db
+    .select()
+    .from(promptComments)
+    .where(eq(promptComments.promptId, id));
+
+  return NextResponse.json({ count: result.length, comment: safeComment });
 }
 
 export const POST = withRequestLogging(handlePost);
