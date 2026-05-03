@@ -107,6 +107,27 @@ jobs:
     name: e2e
     needs: [test, build]
     runs-on: ubuntu-latest
+    # Postgres service container — required by the prompts surface
+    # (Drizzle + postgres-js). Migrations are applied before the
+    # Playwright run so the schema is in place even though the
+    # prompts e2e is currently skipped pending re-wire (see
+    # decisions/2026-05-03-postgres-prompts-spike.md).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crime
+          POSTGRES_PASSWORD: crime
+          POSTGRES_DB: crime
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crime -d crime"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://crime:crime@localhost:5432/crime
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -117,6 +138,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+
+      - name: Apply Postgres migrations
+        run: pnpm db:migrate
 
       - name: Cache Playwright browsers
         id: playwright-cache

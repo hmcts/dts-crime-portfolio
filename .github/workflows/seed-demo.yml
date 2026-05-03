@@ -64,7 +64,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Seed
+      - name: Seed Sanity (reference data, projects, FAQs proxy, events, learning, audit)
         env:
           NEXT_PUBLIC_SANITY_PROJECT_ID: vi5mhbtl
           NEXT_PUBLIC_SANITY_DATASET: ${{ inputs.dataset }}
@@ -79,3 +79,30 @@ jobs:
           else
             pnpm seed:demo
           fi
+
+      # Postgres prompts seed (added 2026-05-03 for the prompts surface
+      # — see decisions/2026-05-03-postgres-prompts-spike.md). Migrate
+      # then seed. DATABASE_URL must be configured on the environment;
+      # for the preview environment it points at the Render-managed
+      # Postgres database provisioned by render.yaml.
+      - name: Migrate Postgres
+        if: ${{ inputs.dryRun != true }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::warning::DATABASE_URL secret not set on this environment. Skipping Postgres seed."
+            exit 0
+          fi
+          pnpm db:migrate
+
+      - name: Seed Postgres prompts
+        if: ${{ inputs.dryRun != true }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::warning::DATABASE_URL secret not set on this environment. Skipping Postgres seed."
+            exit 0
+          fi
+          pnpm seed:prompts

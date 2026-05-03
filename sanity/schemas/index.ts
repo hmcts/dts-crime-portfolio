@@ -9,7 +9,6 @@ import { action } from "./documents/action";
 import { changeLog } from "./documents/changeLog";
 import { editorAccess } from "./documents/editorAccess";
 import { project } from "./documents/project";
-import { prompt } from "./documents/prompt";
 import { learningItem } from "./documents/learningItem";
 import { event } from "./documents/event";
 import { reportingCut } from "./documents/reportingCut";
@@ -20,8 +19,6 @@ import { tooltipExplainer } from "./documents/tooltipExplainer";
 import { tieringAssessment } from "./objects/tieringAssessment";
 import { surveyDetails } from "./objects/surveyDetails";
 import { projectUpdate } from "./objects/projectUpdate";
-import { promptUpvote } from "./objects/promptUpvote";
-import { promptComment } from "./objects/promptComment";
 
 export const schemaTypes: SchemaTypeDefinition[] = [
   // Documents — reference data
@@ -34,7 +31,8 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   // Documents — core
   project,
   // Documents — community / content
-  prompt,
+  // (prompts moved to Postgres on 2026-05-03 — see
+  // decisions/2026-05-03-postgres-prompts-spike.md)
   learningItem,
   event,
   // Documents — operational / audit
@@ -48,6 +46,4 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   tieringAssessment,
   surveyDetails,
   projectUpdate,
-  promptUpvote,
-  promptComment,
 ];
