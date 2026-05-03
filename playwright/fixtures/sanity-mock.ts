@@ -88,9 +88,6 @@ export async function installBaselineSanityMocks(
       { fragment: '_type == "person"', result: emptyReferenceData.people },
       { fragment: '_type == "capability"', result: emptyReferenceData.capabilities },
       { fragment: '_type == "action"', result: emptyReferenceData.actions },
-      // FAQ list — defaults to empty so navigations to /help during
-      // tests that don't seed FAQs don't fall through to the real Sanity.
-      { fragment: '_type == "faq"', result: [] },
     ],
     options,
   );

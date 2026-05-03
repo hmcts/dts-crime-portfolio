@@ -991,126 +991,6 @@ function emailFor(personId: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// FAQ (10) — sectioned per the schema enum.
-// ---------------------------------------------------------------------------
-
-const faqs: SanityDoc[] = [
-  // Practical (5)
-  {
-    _id: "demo-faq-what-is-portal",
-    _type: "faq",
-    section: "1. Getting started",
-    number: 1,
-    question: "What is the portal?",
-    answer: portableText(
-      "The portal is the DTS Crime front door over delivery information for AI-supported services across Crown Court, Magistrates' Court, Probation, Victims and Court Operations.",
-      "It exists so leaders, delivery teams, and assurance can answer 'what is happening, what stage is it at, and who owns it' without chasing decks — and so each project's contribution to the public Crown Court backlog reduction priority is visible from the moment it lands on the portfolio.",
-    ),
-  },
-  {
-    _id: "demo-faq-add-project",
-    _type: "faq",
-    section: "1. Getting started",
-    number: 2,
-    question: "How do I add a project?",
-    answer: portableText(
-      "Use the Add project flow from the portfolio page. The form walks you through identity, org, people, capability, and the 10-question tiering assessment.",
-      "If you don't know an answer yet, save and come back; nothing is required to start.",
-    ),
-  },
-  {
-    _id: "demo-faq-find-owner",
-    _type: "faq",
-    section: "1. Getting started",
-    number: 3,
-    question: "How do I find the owner of a project?",
-    answer: portableText(
-      "Open the project dossier. Owner, additional owners, business lead and legal lead are listed under the People panel with email addresses.",
-    ),
-  },
-  {
-    _id: "demo-faq-export-excel",
-    _type: "faq",
-    section: "1. Getting started",
-    number: 4,
-    question: "How do I export to Excel?",
-    answer: portableText(
-      "From the portfolio page, use the Export menu and choose Excel. The download is generated in your browser; no project data leaves your session via the export step.",
-    ),
-  },
-  {
-    _id: "demo-faq-report-bug",
-    _type: "faq",
-    section: "1. Getting started",
-    number: 5,
-    question: "How do I report a bug?",
-    answer: portableText(
-      "Open a GitHub issue against the dts-crime-portfolio repo, or reach the team on the #dts-crime-portfolio channel. Screenshots help.",
-    ),
-  },
-
-  // Strategic framing (5) — refreshed for the 2026 backlog / Leveson framing.
-  {
-    _id: "demo-faq-backlog-link",
-    _type: "faq",
-    section: "10. Overall AI strategy and portfolio",
-    number: 1,
-    question:
-      "How does a project on the portfolio link to the Crown Court backlog target?",
-    answer: portableText(
-      "Every project picks at least one strand on the action plan. Strand 1 — 'Reduce the Crown Court outstanding caseload' — is the SRO-owned strand that aggregates contributions from listings, pre-trial readiness and case-file quality work.",
-      "Open any project's dossier and look at the Action plan section: the strands it links to are how the portfolio rolls its contribution up.",
-    ),
-  },
-  {
-    _id: "demo-faq-leveson",
-    _type: "faq",
-    section: "10. Overall AI strategy and portfolio",
-    number: 2,
-    question:
-      "What does the Leveson Review mean for projects on this portfolio?",
-    answer: portableText(
-      "The Independent Review of the Criminal Courts (Sir Brian Leveson) was set up to recommend structural reforms to address the Crown Court backlog. Themes likely to shape DTS Crime delivery include venue allocation, mode-of-trial reform, listing efficiency, and pre-trial readiness.",
-      "Recommendations may evolve. Project copy on this portfolio is tracked against the published terms of reference and refreshed as recommendations land — see the 'Magistrates' Court venue allocation (Leveson recommendation tracking)' project for the placeholder we use until specifics arrive.",
-    ),
-  },
-  {
-    _id: "demo-faq-cracked-priority",
-    _type: "faq",
-    section: "10. Overall AI strategy and portfolio",
-    number: 3,
-    question: "Why is cracked-trial reduction a portfolio priority?",
-    answer: portableText(
-      "Cracked trials waste courtroom time and add to the outstanding caseload. They are also a measurable, attributable signal: when they happen we usually know why.",
-      "That makes 'reduce cracked trials' a useful target for AI-supported services. Projects that surface root causes (the cracked-trial root-cause classifier), unblock pre-trial readiness (witness anomaly detection, interpreter scheduling, disclosure routing), or improve listing accuracy all land here.",
-    ),
-  },
-  {
-    _id: "demo-faq-cracked-vs-ineffective",
-    _type: "faq",
-    section: "10. Overall AI strategy and portfolio",
-    number: 4,
-    question: "What's the difference between cracked and ineffective trials?",
-    answer: portableText(
-      "A cracked trial is one that doesn't go ahead on the day it was due to start, but doesn't get re-listed for a future date — typically because the case ended (a plea, or the prosecution offering no evidence).",
-      "An ineffective trial is one that doesn't go ahead on the day and does need to be re-listed — for example because a witness, interpreter or judge wasn't available. Cracked trials are wasted courtroom time once; ineffective trials waste it once and consume a future slot too.",
-    ),
-  },
-  {
-    _id: "demo-faq-backlog-tag",
-    _type: "faq",
-    section: "10. Overall AI strategy and portfolio",
-    number: 5,
-    question: "How do I know if my project should be tagged as 'backlog-impacting'?",
-    answer: portableText(
-      "Use the action plan strands as the test. If your project shortens charge-to-disposal time, reduces cracked or ineffective trials, or unlocks listing capacity, link it to strand 1 ('Reduce the Crown Court outstanding caseload').",
-      "If it improves bundles, witness scheduling, interpreters, defence engagement or disclosure quality, link strand 2. If it improves Common Platform data or analytics, link strand 3 (case-file quality). Many projects link more than one strand — that's expected and useful.",
-    ),
-  },
-
-];
-
-// ---------------------------------------------------------------------------
 // Learning (6)
 // ---------------------------------------------------------------------------
 
@@ -1999,7 +1879,6 @@ const ALL_DOCS: SanityDoc[] = [
   ...commenterPeople,
   ...actions,
   ...projects,
-  ...faqs,
   ...learning,
   ...prompts,
   ...events,
@@ -2049,7 +1928,7 @@ async function main(): Promise<void> {
   const phases: Array<{ label: string; docs: SanityDoc[] }> = [
     { label: "reference data", docs: [...groups, ...directorates, ...businessAreas, ...capabilities, ...people, ...commenterPeople, ...actions] },
     { label: "projects", docs: projects },
-    { label: "content", docs: [...faqs, ...learning, ...prompts, ...events] },
+    { label: "content", docs: [...learning, ...prompts, ...events] },
     { label: "audit", docs: changeLog },
   ];
 

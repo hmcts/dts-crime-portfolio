@@ -61,7 +61,6 @@ async function installPortfolioMocks(page: Page): Promise<void> {
     { fragment: '_type == "capability"', result: sampleReferenceData.capabilities },
     { fragment: '_type == "action"', result: sampleReferenceData.actions },
     { fragment: '_type == "project"', result: { total: 0, filtered: [] } },
-    { fragment: '_type == "faq"', result: [] },
   ]);
 }
 
