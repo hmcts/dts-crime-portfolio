@@ -1,34 +1,34 @@
 import { expect, test } from "@playwright/test";
 
-import { faqEntries } from "../fixtures/project-fixtures";
 import { installBaselineMocks, signIn } from "../fixtures/sign-in";
 
 /**
- * Retro action item 2 — first batch of e2e tests.
- *
- * Covers the brief's test 5: Help / FAQ search. Types into the search
- * box and asserts that matching FAQ entries narrow.
+ * Help / FAQ search. Asserts the page loads against the live FAQ
+ * corpus (file-based, `content/faqs/*.md`) and that the search input
+ * narrows the rendered list. The earlier mock-fixture form is gone:
+ * since FAQs are no longer stored in Sanity, there is nothing to mock,
+ * and asserting against real content guards against drift between
+ * fixture and corpus.
  */
 test("help page search narrows the FAQ list", async ({ page }) => {
-  await installBaselineMocks(page, [
-    { fragment: '_type == "faq"', result: faqEntries },
-  ]);
+  await installBaselineMocks(page);
   await signIn(page, { next: "/help" });
 
-  // Initial state — every seeded FAQ question is rendered.
-  for (const entry of faqEntries) {
-    await expect(page.getByText(entry.question)).toBeVisible();
-  }
+  // Initial state — a known question from each end of the corpus is
+  // visible. The corpus is small enough that picking two stable ones
+  // is a reasonable smoke test.
+  await expect(page.getByText("What is the portal?")).toBeVisible();
+  await expect(
+    page.getByText(/What does the Leveson Review mean/i),
+  ).toBeVisible();
 
-  // Type a fragment of one specific FAQ ("DPIA") into the search input.
-  await page.getByLabel("Search FAQs").fill("DPIA");
-
-  // The matching entry stays visible; non-matching entries are removed
-  // from the DOM (HelpFaq drops sections whose entries are all filtered
-  // out while a query is active).
-  const matching = faqEntries.find((entry) => entry.question.includes("DPIA"))!;
-  await expect(page.getByText(matching.question)).toBeVisible();
-  for (const entry of faqEntries.filter((e) => !e.question.includes("DPIA"))) {
-    await expect(page.getByText(entry.question)).toHaveCount(0);
-  }
+  // Search for a term that appears in only one FAQ (Leveson). The
+  // matching panel stays; the unrelated panel is removed from the DOM
+  // (HelpFaq drops sections whose entries are all filtered out while
+  // a query is active).
+  await page.getByLabel("Search FAQs").fill("Leveson");
+  await expect(
+    page.getByText(/What does the Leveson Review mean/i),
+  ).toBeVisible();
+  await expect(page.getByText("What is the portal?")).toHaveCount(0);
 });

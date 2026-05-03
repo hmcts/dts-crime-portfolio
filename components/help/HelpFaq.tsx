@@ -9,7 +9,7 @@ import {
   type FaqEntry,
   type FaqSection,
 } from "@/lib/help/types";
-import { FAQ_SECTIONS } from "@/sanity/schemas/documents/faq";
+import { FAQ_SECTIONS } from "@/lib/help/sections";
 
 interface HelpFaqProps {
   entries: FaqEntry[];

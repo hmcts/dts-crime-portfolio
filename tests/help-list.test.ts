@@ -9,7 +9,7 @@ import {
   type FaqEntry,
   type FaqSection,
 } from "@/lib/help/list";
-import { FAQ_SECTIONS } from "@/sanity/schemas/documents/faq";
+import { FAQ_SECTIONS } from "@/lib/help/sections";
 
 function entry(overrides: Partial<FaqEntry> & { _id: string; section: FaqSection }): FaqEntry {
   return {
@@ -29,6 +29,23 @@ function paragraph(text: string) {
     markDefs: [],
   };
 }
+
+describe("FAQ_SECTIONS", () => {
+  it("exposes the ten spec-defined sections in order", () => {
+    expect(FAQ_SECTIONS).toEqual([
+      "1. Getting started",
+      "2. Using AI tools effectively",
+      "3. Acceptable use",
+      "4. Context and knowledge",
+      "5. Data security and privacy",
+      "6. Copyright",
+      "7. Ethics and public service values",
+      "8. Environment",
+      "9. Workforce and responsibility",
+      "10. Overall AI strategy and portfolio",
+    ]);
+  });
+});
 
 describe("groupFaqEntriesBySection", () => {
   it("seeds every spec section with an empty array when no entries are passed", () => {

@@ -1,8 +1,8 @@
 import type { PortableTextBlock } from "@portabletext/types";
 
-import { FAQ_SECTIONS } from "@/sanity/schemas/documents/faq";
+import { FAQ_SECTIONS, type FaqSection } from "./sections";
 
-export type FaqSection = (typeof FAQ_SECTIONS)[number];
+export type { FaqSection };
 
 /**
  * Single published FAQ entry. The `answer` field is Portable Text rendered via

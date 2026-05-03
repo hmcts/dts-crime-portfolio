@@ -1,27 +1,23 @@
 import "server-only";
 
-import { getSanityClient } from "@/lib/sanity/client";
+import { loadFaqEntries } from "./load-faqs";
 
 import type { FaqEntry } from "./types";
 
-export type { FaqEntry, FaqSection } from "./types";
+export type { FaqEntry } from "./types";
+export type { FaqSection } from "./sections";
 export {
   filterFaqEntries,
   groupFaqEntriesBySection,
   portableTextToPlain,
 } from "./types";
 
-const FAQ_QUERY = /* groq */ `
-  *[_type == "faq"] | order(section asc, number asc) {
-    _id,
-    section,
-    number,
-    question,
-    answer
-  }
-`;
-
+/**
+ * Load every FAQ entry. Backed by `content/faqs/*.md` (file-based) — the
+ * earlier Sanity GROQ projection has been retired so editorial content
+ * is reviewable via PR. The function name is preserved so consumers are
+ * unchanged. Spec: openspec/specs/help-faq/spec.md.
+ */
 export async function fetchFaqEntries(): Promise<FaqEntry[]> {
-  const client = getSanityClient();
-  return client.fetch<FaqEntry[]>(FAQ_QUERY);
+  return loadFaqEntries();
 }

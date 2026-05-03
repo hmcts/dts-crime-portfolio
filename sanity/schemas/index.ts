@@ -12,7 +12,6 @@ import { project } from "./documents/project";
 import { prompt } from "./documents/prompt";
 import { learningItem } from "./documents/learningItem";
 import { event } from "./documents/event";
-import { faq } from "./documents/faq";
 import { reportingCut } from "./documents/reportingCut";
 import { previewSession } from "./documents/previewSession";
 import { reminderSend } from "./documents/reminderSend";
@@ -38,7 +37,6 @@ export const schemaTypes: SchemaTypeDefinition[] = [
   prompt,
   learningItem,
   event,
-  faq,
   // Documents — operational / audit
   changeLog,
   editorAccess,
