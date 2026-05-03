@@ -1,8 +1,10 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { getSanityClient } from "@/lib/sanity/client";
+import { getDb } from "@/lib/db/client";
+import { editorAllowlist } from "@/lib/db/schema";
 
 export type UserContext =
   | { kind: "unauthorized"; reason: UnauthorizedReason }
@@ -69,22 +71,21 @@ export function isInAdminAllowlist(email: string): boolean {
   return allowlist.includes(email);
 }
 
-const EDITOR_ACCESS_QUERY = /* groq */ `
-  *[_type == "editorAccess" && email == $email][0].projects[]._ref
-`;
-
 /**
- * Project-scoped editor allowlist. Queries the `editorAccess` Sanity
- * document for the calling email and returns the list of project IDs they
- * can mutate. No caching — this runs once per resolver call (i.e. once per
- * request).
+ * Project-scoped editor allowlist. Reads the `editor_allowlist` Postgres
+ * table for the calling email and returns the list of project IDs they
+ * can mutate. The earlier model queried a Sanity `editorAccess` document
+ * via GROQ; the table swap is invisible to callers — same return shape,
+ * same ordering guarantees (none — callers don't depend on order).
  *
- * Spec: openspec/specs/access-control/spec.md (Three-role model, Editor on
- * a specific project).
+ * Spec: openspec/specs/access-control/spec.md (Three-role model, Editor
+ * on a specific project) and decisions/2026-05-03-editor-allowlist-claude-design-brief.md.
  */
 export async function fetchEditableProjects(email: string): Promise<string[]> {
-  const client = getSanityClient();
-  const refs = await client.fetch<string[] | null>(EDITOR_ACCESS_QUERY, { email });
-  if (!Array.isArray(refs)) return [];
-  return refs.filter((value): value is string => typeof value === "string");
+  const db = getDb();
+  const rows = await db
+    .select({ projectId: editorAllowlist.projectId })
+    .from(editorAllowlist)
+    .where(eq(editorAllowlist.email, email));
+  return rows.map((row) => row.projectId);
 }

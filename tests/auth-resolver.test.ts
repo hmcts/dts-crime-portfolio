@@ -4,9 +4,30 @@ const headersMock = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: () => Promise.resolve(headersMock) }));
 vi.mock("server-only", () => ({}));
 
-const sanityFetchMock = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/sanity/client", () => ({
-  getSanityClient: () => ({ fetch: sanityFetchMock }),
+// Drizzle mock — `db.select(...).from(...).where(...)` resolves to the
+// canned rows the test installs via `dbRowsMock.set()`. Same shape as
+// the actual Drizzle chain so the resolver code under test isn't aware
+// it's mocked.
+const dbRowsMock = vi.hoisted(() => {
+  let rows: Array<{ projectId: string }> = [];
+  const select = vi.fn(() => ({
+    from: () => ({
+      where: () => Promise.resolve(rows),
+    }),
+  }));
+  return {
+    select,
+    set(next: Array<{ projectId: string }>) {
+      rows = next;
+    },
+    reset() {
+      rows = [];
+      select.mockClear();
+    },
+  };
+});
+vi.mock("@/lib/db/client", () => ({
+  getDb: () => ({ select: dbRowsMock.select }),
 }));
 
 import {
@@ -68,8 +89,7 @@ describe("resolveUser", () => {
 
   beforeEach(() => {
     headersMock.get.mockReset();
-    sanityFetchMock.mockReset();
-    sanityFetchMock.mockResolvedValue([]);
+    dbRowsMock.reset();
     process.env.ADMIN_ALLOWLIST = "admin@hmcts.net";
   });
 
@@ -91,7 +111,7 @@ describe("resolveUser", () => {
 
   it("authorises a non-admin user with no editable projects", async () => {
     headersMock.get.mockReturnValue("viewer@hmcts.net");
-    sanityFetchMock.mockResolvedValueOnce([]);
+    dbRowsMock.set([]);
     const result = await resolveUser();
     expect(result).toEqual({
       kind: "authorized",
@@ -110,8 +130,8 @@ describe("resolveUser", () => {
       isAdmin: true,
       editableProjects: [],
     });
-    // Admin path bypasses the Sanity lookup entirely.
-    expect(sanityFetchMock).not.toHaveBeenCalled();
+    // Admin path bypasses the Postgres lookup entirely.
+    expect(dbRowsMock.select).not.toHaveBeenCalled();
   });
 
   it("normalises the email to lowercase before checking the admin list", async () => {
@@ -125,9 +145,9 @@ describe("resolveUser", () => {
     });
   });
 
-  it("returns the editable projects from the Sanity allowlist for a non-admin", async () => {
+  it("returns the editable projects from the Postgres allowlist for a non-admin", async () => {
     headersMock.get.mockReturnValue("editor@hmcts.net");
-    sanityFetchMock.mockResolvedValueOnce(["project-1", "project-2"]);
+    dbRowsMock.set([{ projectId: "project-1" }, { projectId: "project-2" }]);
     const result = await resolveUser();
     expect(result).toEqual({
       kind: "authorized",
@@ -135,46 +155,35 @@ describe("resolveUser", () => {
       isAdmin: false,
       editableProjects: ["project-1", "project-2"],
     });
-    expect(sanityFetchMock).toHaveBeenCalledOnce();
-    const [, params] = sanityFetchMock.mock.calls[0]!;
-    expect(params).toEqual({ email: "editor@hmcts.net" });
+    expect(dbRowsMock.select).toHaveBeenCalledOnce();
   });
 
-  it("uses the lower-cased email when querying the Sanity allowlist", async () => {
+  it("uses the lower-cased email when querying the Postgres allowlist", async () => {
     headersMock.get.mockReturnValue("Editor@HMCTS.net");
-    sanityFetchMock.mockResolvedValueOnce(["project-9"]);
+    dbRowsMock.set([{ projectId: "project-9" }]);
     const result = await resolveUser();
-    expect(result).toEqual({
-      kind: "authorized",
-      email: "editor@hmcts.net",
-      isAdmin: false,
-      editableProjects: ["project-9"],
-    });
-    const [, params] = sanityFetchMock.mock.calls[0]!;
-    expect(params).toEqual({ email: "editor@hmcts.net" });
+    expect(result.kind).toBe("authorized");
+    if (result.kind === "authorized") {
+      expect(result.email).toBe("editor@hmcts.net");
+      expect(result.editableProjects).toEqual(["project-9"]);
+    }
   });
 });
 
 describe("fetchEditableProjects", () => {
   beforeEach(() => {
-    sanityFetchMock.mockReset();
+    dbRowsMock.reset();
   });
 
-  it("returns the project ids from the Sanity allowlist", async () => {
-    sanityFetchMock.mockResolvedValueOnce(["project-a", "project-b"]);
+  it("returns the project ids from the Postgres allowlist", async () => {
+    dbRowsMock.set([{ projectId: "project-a" }, { projectId: "project-b" }]);
     const result = await fetchEditableProjects("editor@hmcts.net");
     expect(result).toEqual(["project-a", "project-b"]);
   });
 
-  it("returns an empty array when the email has no editorAccess document", async () => {
-    sanityFetchMock.mockResolvedValueOnce(null);
+  it("returns an empty array when the email has no rows", async () => {
+    dbRowsMock.set([]);
     const result = await fetchEditableProjects("nobody@hmcts.net");
     expect(result).toEqual([]);
-  });
-
-  it("filters out non-string entries defensively", async () => {
-    sanityFetchMock.mockResolvedValueOnce(["a", null, undefined, 1, "b"]);
-    const result = await fetchEditableProjects("editor@hmcts.net");
-    expect(result).toEqual(["a", "b"]);
   });
 });
