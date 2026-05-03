@@ -5,6 +5,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -118,5 +119,41 @@ export const promptCommentUpvotes = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.commentId, table.userEmail] }),
+  }),
+);
+
+/**
+ * Per-(email, projectId) editor access. Replaces the Sanity
+ * `editorAccess` document for the auth resolver — the Postgres-backed
+ * `/admin/editors` admin UI manages rows here, and `resolveUser()`
+ * reads them on every request to compute `editableProjects`.
+ *
+ * `id` is a stable surrogate so the DELETE endpoint can address a
+ * single row by id (rather than emailing+projectId in a query string).
+ * `email` + `projectId` are uniquely indexed to enforce idempotency at
+ * the DB level — a duplicate insert collides cleanly.
+ *
+ * `grantedBy` records the admin who created the row, recorded for the
+ * audit footer on the admin page (Last 5 changes). Spec:
+ * openspec/specs/access-control/spec.md (Editor on a specific project)
+ * and decisions/2026-05-03-editor-allowlist-claude-design-brief.md.
+ */
+export const editorAllowlist = pgTable(
+  "editor_allowlist",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    projectId: text("project_id").notNull(),
+    grantedBy: text("granted_by").notNull(),
+    grantedAt: timestamp("granted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    uq: uniqueIndex("editor_allowlist_email_project_unique").on(
+      table.email,
+      table.projectId,
+    ),
+    emailIdx: index("editor_allowlist_email_idx").on(table.email),
   }),
 );

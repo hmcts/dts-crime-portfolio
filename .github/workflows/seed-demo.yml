@@ -106,3 +106,14 @@ jobs:
             exit 0
           fi
           pnpm seed:prompts
+
+      - name: Seed Postgres editor allowlist
+        if: ${{ inputs.dryRun != true }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::warning::DATABASE_URL secret not set on this environment. Skipping Postgres seed."
+            exit 0
+          fi
+          pnpm seed:editors

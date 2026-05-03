@@ -8,6 +8,13 @@
       "when": 1777798051701,
       "tag": "0000_init_prompts",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777826677274,
+      "tag": "0001_add_editor_allowlist",
+      "breakpoints": true
     }
   ]
 }

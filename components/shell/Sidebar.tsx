@@ -21,6 +21,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/help", label: "Help" },
 ];
 
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  { href: "/admin/editors", label: "Editor allowlist", badge: "Admin" },
+];
+
 /**
  * Single sidebar component for both modes. The `isOverlayMode` flag
  * flips the positioning classes — `position: fixed` overlay drawer on
@@ -31,7 +35,7 @@ const NAV_ITEMS: NavItem[] = [
  * disables the transition for users who set
  * `prefers-reduced-motion: reduce`.
  */
-export function Sidebar() {
+export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   const { isOpen, isOverlayMode, close } = useSidebar();
 
@@ -81,43 +85,34 @@ export function Sidebar() {
           </div>
           <nav aria-label="Primary" className="flex-1 overflow-y-auto p-2">
             <ul className="space-y-0.5">
-              {NAV_ITEMS.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  (item.href !== "/" && pathname?.startsWith(`${item.href}/`));
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      aria-current={active ? "page" : undefined}
-                      onClick={() => {
-                        // Auto-close on mobile after a navigation, to
-                        // match standard drawer behaviour.
-                        if (isOverlayMode) close();
-                      }}
-                      className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition ${
-                        active
-                          ? "bg-neutral-900 text-white"
-                          : "text-neutral-700 hover:bg-neutral-100"
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      {item.badge && (
-                        <span
-                          className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
-                            active
-                              ? "bg-white/15 text-white"
-                              : "bg-neutral-100 text-neutral-500"
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
+              {NAV_ITEMS.map((item) => (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  pathname={pathname}
+                  isOverlayMode={isOverlayMode}
+                  close={close}
+                />
+              ))}
             </ul>
+            {isAdmin && (
+              <>
+                <div className="mt-4 px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">
+                  Admin
+                </div>
+                <ul className="space-y-0.5">
+                  {ADMIN_NAV_ITEMS.map((item) => (
+                    <NavLink
+                      key={item.href}
+                      item={item}
+                      pathname={pathname}
+                      isOverlayMode={isOverlayMode}
+                      close={close}
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
           </nav>
           <div className="border-t border-neutral-200 p-3 text-[10px] text-neutral-500">
             <Link
@@ -133,5 +128,50 @@ export function Sidebar() {
         </div>
       </aside>
     </>
+  );
+}
+
+function NavLink({
+  item,
+  pathname,
+  isOverlayMode,
+  close,
+}: {
+  item: NavItem;
+  pathname: string | null;
+  isOverlayMode: boolean;
+  close: () => void;
+}) {
+  const active =
+    pathname === item.href ||
+    (item.href !== "/" && pathname?.startsWith(`${item.href}/`));
+  return (
+    <li>
+      <Link
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        onClick={() => {
+          if (isOverlayMode) close();
+        }}
+        className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition ${
+          active
+            ? "bg-neutral-900 text-white"
+            : "text-neutral-700 hover:bg-neutral-100"
+        }`}
+      >
+        <span>{item.label}</span>
+        {item.badge && (
+          <span
+            className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+              active
+                ? "bg-white/15 text-white"
+                : "bg-neutral-100 text-neutral-500"
+            }`}
+          >
+            {item.badge}
+          </span>
+        )}
+      </Link>
+    </li>
   );
 }

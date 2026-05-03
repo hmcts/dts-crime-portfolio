@@ -17,6 +17,7 @@
     "format": "prettier --write .",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "seed:prompts": "tsx scripts/seed-prompts-pg.ts",
+    "seed:editors": "tsx scripts/seed-editor-allowlist-pg.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:studio": "drizzle-kit studio"
