@@ -24,7 +24,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@portabletext/react": "^6.0.3",
+    "@portabletext/react": "^6.2.0",
     "@portabletext/types": "^4.0.2",
     "@sanity/client": "^7.11.2",
     "@sanity/vision": "^4.22.0",
@@ -34,8 +34,8 @@
     "next": "^15.1.0",
     "next-sanity": "^11.6.13",
     "postgres": "^3.4.9",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "sanity": "^4.22.0",
     "server-only": "^0.0.1",
     "styled-components": "^6.1.13"
