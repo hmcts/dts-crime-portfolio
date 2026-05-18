@@ -22,7 +22,7 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2
       '@sanity/client':
-        specifier: ^7.11.2
+        specifier: ^7.22.0
         version: 7.22.0
       '@sanity/vision':
         specifier: ^4.22.0
@@ -37,7 +37,7 @@ importers:
         specifier: ^4.4.0
         version: 4.4.0
       next:
-        specifier: ^15.1.0
+        specifier: ^15.5.15
         version: 15.5.15(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       next-sanity:
         specifier: ^11.6.13
@@ -46,10 +46,10 @@ importers:
         specifier: ^3.4.9
         version: 3.4.9
       react:
-        specifier: ^19.0.0
+        specifier: ^19.2.5
         version: 19.2.5
       react-dom:
-        specifier: ^19.0.0
+        specifier: ^19.2.5
         version: 19.2.5(react@19.2.5)
       sanity:
         specifier: ^4.22.0
@@ -58,47 +58,47 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       styled-components:
-        specifier: ^6.1.13
+        specifier: ^6.4.1
         version: 6.4.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
     devDependencies:
       '@eslint/eslintrc':
-        specifier: ^3.2.0
+        specifier: ^3.3.5
         version: 3.3.5
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
       '@tailwindcss/postcss':
-        specifier: ^4.0.0
+        specifier: ^4.2.4
         version: 4.2.4
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
       '@types/react':
-        specifier: ^19.0.5
+        specifier: ^19.2.14
         version: 19.2.14
       '@types/react-dom':
-        specifier: ^19.0.3
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.14)
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
       eslint:
-        specifier: ^9.18.0
+        specifier: ^9.39.4
         version: 9.39.4(jiti@2.6.1)
       eslint-config-next:
-        specifier: ^15.1.0
+        specifier: ^15.5.15
         version: 15.5.15(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       prettier:
-        specifier: ^3.4.2
+        specifier: ^3.8.3
         version: 3.8.3
       tailwindcss:
-        specifier: ^4.0.0
+        specifier: ^4.2.4
         version: 4.2.4
       tsx:
-        specifier: ^4.19.2
+        specifier: ^4.21.0
         version: 4.21.0
       typescript:
-        specifier: ^5.7.2
+        specifier: ^5.9.3
         version: 5.9.3
       vitest:
         specifier: ^4.1.5
@@ -3299,8 +3299,8 @@ packages:
   brace-expansion@2.1.0:
     resolution: {integrity: sha512-TN1kCZAgdgweJhWWpgKYrQaMNHcDULHkWwQIspdtjV4Y5aurRdZpjAqn6yX3FPqTA9ngHCc4hJxMAMgGfve85w==}
 
-  brace-expansion@5.0.5:
-    resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
+  brace-expansion@5.0.6:
+    resolution: {integrity: sha512-kLpxurY4Z4r9sgMsyG0Z9uzsBlgiU/EFKhj/h91/8yHu0edo7XuixOIH3VcJ8kkxs6/jPzoI6U9Vj3WqbMQ94g==}
     engines: {node: 18 || 20 || >=22}
 
   braces@3.0.3:
@@ -10295,7 +10295,7 @@ snapshots:
     dependencies:
       balanced-match: 1.0.2
 
-  brace-expansion@5.0.5:
+  brace-expansion@5.0.6:
     dependencies:
       balanced-match: 4.0.4
 
@@ -12276,7 +12276,7 @@ snapshots:
 
   minimatch@10.2.5:
     dependencies:
-      brace-expansion: 5.0.5
+      brace-expansion: 5.0.6
 
   minimatch@3.1.5:
     dependencies:
